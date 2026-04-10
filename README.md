@@ -1,3 +1,12 @@
+---
+title: ArunCore
+emoji: 🧠
+colorFrom: indigo
+colorTo: purple
+sdk: docker
+pinned: false
+---
+
 # 🤖 ArunCore: High-Precision AI Digital Twin
 
 ArunCore is a **State-of-the-Art RAG Agent** architected to act as a transparent, first-person proxy for Arun Yadav. It is designed to solve the "hallucination problem" in personal AI by utilizing a sophisticated, multi-layered retrieval and grounding pipeline.
