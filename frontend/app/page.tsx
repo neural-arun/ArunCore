@@ -226,6 +226,18 @@ export default function ChatPage() {
         .message-row.user .markdown-bubble { border-radius: 18px 18px 4px 18px; background: #1e1b4b; border-color: var(--accent); }
         .markdown-bubble a { color: #6ee7b7; text-decoration: underline; font-weight: 600; transition: color 0.2s; }
         .markdown-bubble a:hover { color: white; }
+        
+        /* Markdown Elite Formatting */
+        .markdown-bubble ul, .markdown-bubble ol { margin: 16px 0 16px 24px; padding: 0; }
+        .markdown-bubble li { margin-bottom: 8px; line-height: 1.6; padding-left: 4px; }
+        .markdown-bubble li::marker { color: #f4f4f5; }
+        .markdown-bubble h3 { font-size: 1.15rem; color: white; margin: 24px 0 12px 0; font-weight: 600; }
+        .markdown-bubble h1, .markdown-bubble h2 { color: white; margin: 24px 0 12px 0; font-weight: 700; }
+        .markdown-bubble hr { border: 0; border-top: 1px dashed #3f3f46; margin: 24px 0; }
+        .markdown-bubble p { margin: 0 0 12px 0; }
+        .markdown-bubble p:last-child { margin-bottom: 0; }
+        .markdown-bubble strong { color: white; }
+
         .welcome-p { font-size: 1.1rem; font-weight: 500; }
         .table-wrapper { overflow-x: auto; margin: 10px 0; border: 1px solid var(--border); border-radius: 8px; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
