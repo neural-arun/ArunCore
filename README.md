@@ -1,3 +1,13 @@
+---
+title: ArunCore Digital Twin
+emoji: 🧠
+colorFrom: green
+colorTo: blue
+sdk: docker
+app_port: 8000
+pinned: false
+---
+
 # ArunCore: The AI Digital Twin & Agentic Architecture
 
 **ArunCore** is a production-grade, stateful, retrieval-augmented AI agent engineered to serve as my personal digital proxy. It isn't just a simple chatbot; it is a full-stack, hybrid-search intelligence pipeline built to securely and accurately represent my professional background, technical decisions, and portfolio.
