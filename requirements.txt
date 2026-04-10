@@ -11,3 +11,4 @@ langchain-cohere>=0.1.0
 rank_bm25>=0.2.2
 fastapi==0.110.0
 uvicorn==0.29.0
+python-telegram-bot==21.0.1
