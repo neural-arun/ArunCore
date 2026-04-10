@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 # Import the core engine components
 from core.agent import init_agent, RollingMemory
-from langchain_groq import ChatGroq
+from langchain_openai import ChatOpenAI
 
 load_dotenv()
 
@@ -56,7 +56,7 @@ async def chat_endpoint(req: ChatRequest):
     if req.session_id not in active_sessions:
         print(f"[API] Creating new memory session for {req.session_id}")
         # Initialize the fast underlying summarizer
-        summary_llm = ChatGroq(temperature=0.0, model_name="llama-3.1-8b-instant", api_key=os.getenv("GROQ_API_KEY"))
+        summary_llm = ChatOpenAI(temperature=0.0, model="gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"))
         active_sessions[req.session_id] = RollingMemory(summary_llm=summary_llm)
         
     memory = active_sessions[req.session_id]

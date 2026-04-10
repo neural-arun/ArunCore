@@ -10,8 +10,7 @@ from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.documents import Document
 from langchain_core.tools import tool
-from langchain_openai import OpenAIEmbeddings
-from langchain_groq import ChatGroq
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
 # DB & Retrievers
@@ -219,14 +218,14 @@ def init_agent():
 
     # Init LLMs
     # 1. Fast LLM for Summarization
-    summary_llm = ChatGroq(temperature=0.0, model_name="llama-3.1-8b-instant", api_key=os.getenv("GROQ_API_KEY"))
+    summary_llm = ChatOpenAI(temperature=0.0, model="gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"))
     
     # 2. Heavy LLM for Tool Calling & Generation
     tools = [notify_arun, search_arun_knowledge]
-    main_llm = ChatGroq(
+    main_llm = ChatOpenAI(
         temperature=0.2, 
-        model_name="openai/gpt-oss-120b", 
-        api_key=os.getenv("GROQ_API_KEY")
+        model="gpt-4o-mini", 
+        api_key=os.getenv("OPENAI_API_KEY")
     ).bind_tools(tools)
 
     # Build Stateful Prompt
