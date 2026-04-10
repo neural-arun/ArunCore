@@ -225,7 +225,7 @@ def init_agent():
     tools = [notify_arun, search_arun_knowledge]
     main_llm = ChatGroq(
         temperature=0.2, 
-        model_name="openai/gpt-oss-20b", 
+        model_name="llama-3.3-70b-versatile", 
         api_key=os.getenv("GROQ_API_KEY")
     ).bind_tools(tools)
 
