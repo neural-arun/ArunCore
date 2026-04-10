@@ -1,0 +1,22 @@
+{
+  "project_name": "Legal RAG System",
+  "repo_url": "https://github.com/neural-arun/legal_RAG_system",
+  "description": "An 8-stage Retrieval-Augmented Generation pipeline purpose-built for Indian legal documents — IPC, Indian Constitution, and court judgments.",
+  "created_at": "2026-04",
+  "updated_at": "2026-04",
+  "tech_stack": [
+    "python",
+    "pypdf",
+    "langchain",
+    "langchain-groq",
+    "langchain-openai",
+    "openai-embeddings",
+    "chromadb",
+    "groq",
+    "unstructured",
+    "python-dotenv",
+    "tqdm"
+  ],
+  "status": "completed",
+  "visibility": "PUBLIC"
+}

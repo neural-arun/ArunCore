@@ -1,0 +1,19 @@
+{
+  "project_name": "Agentic AI Projects",
+  "repo_url": "https://github.com/neural-arun/Agentic_AI_Projects",
+  "description": "A collection of 4 agentic AI mini-projects built to study tool-calling, multi-agent workflows, and LLM orchestration patterns — including an AI auditor, cold email outreach agent, capabilities bot, and personal career agent prototype.",
+  "created_at": "2026-03",
+  "updated_at": "2026-03",
+  "tech_stack": [
+    "python",
+    "openai",
+    "fastapi",
+    "gradio",
+    "pydantic",
+    "tiktoken",
+    "httpx",
+    "tenacity"
+  ],
+  "status": "wip",
+  "visibility": "PUBLIC"
+}

@@ -1,0 +1,15 @@
+{
+  "project_name": "UPPSC PCS 2024 Statistical Audit",
+  "repo_url": "https://github.com/neural-arun/result_anomaly",
+  "description": "A data transparency project that extracts, analyses, and publicly reports a statistically significant anomaly in the UPPSC PCS 2024 examination results — showing a near 2x selection rate advantage for candidates with roll numbers starting 00 and 01.",
+  "created_at": "2026-04",
+  "updated_at": "2026-04",
+  "tech_stack": [
+    "python",
+    "pdfplumber",
+    "regex",
+    "json"
+  ],
+  "status": "completed",
+  "visibility": "PUBLIC"
+}

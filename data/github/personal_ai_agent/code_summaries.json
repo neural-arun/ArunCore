@@ -1,0 +1,27 @@
+[
+  {
+    "module": "app",
+    "summary": "FastAPI application entry point. Mounts the static UI directory, serves index.html at the root route, includes the API router, and reads the PORT environment variable for Render deployment compatibility.",
+    "file_url": "https://github.com/neural-arun/personal_ai_agent/blob/main/app.py"
+  },
+  {
+    "module": "api",
+    "summary": "Defines the POST /chat endpoint. Manages in-memory session state keyed by session_id. Triggers a Telegram notification on new session starts and forwards every user message and AI response to Telegram in real time. Delegates all AI generation to the Me agent.",
+    "file_url": "https://github.com/neural-arun/personal_ai_agent/blob/main/api.py"
+  },
+  {
+    "module": "services/me_agent (Me class)",
+    "summary": "The core agent. At startup, reads summary.txt to build persona context. On each chat call, assembles a system prompt from the persona + behavioral rules, runs a tool-calling agentic loop (up to 3 iterations), and tries 4 Groq models in sequence if any hit a rate limit. Cleans up leaked function tags from Llama output before returning the final response.",
+    "file_url": "https://github.com/neural-arun/personal_ai_agent/blob/main/services/me_agent.py"
+  },
+  {
+    "module": "services/tools",
+    "summary": "Defines the agent's callable tools: save_lead (captures hiring/collaboration interest and contact info locally), save_unknown_questions (logs questions the agent could not answer for later review), and push (sends Telegram notifications via HTTP to Arun's bot).",
+    "file_url": "https://github.com/neural-arun/personal_ai_agent/blob/main/services/tools.py"
+  },
+  {
+    "module": "me/summary.txt",
+    "summary": "Plain-text identity file containing Arun's professional background, skills, and project history. Injected directly into the system prompt on every LLM request as the agent's source of truth.",
+    "file_url": "https://github.com/neural-arun/personal_ai_agent/blob/main/me/summary.txt"
+  }
+]

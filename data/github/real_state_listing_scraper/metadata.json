@@ -1,0 +1,19 @@
+{
+  "project_name": "99acres Real Estate Scraper Suite",
+  "repo_url": "https://github.com/neural-arun/real_state_listing_scraper",
+  "description": "A 3-track web scraping suite for extracting property listing data from 99acres.com — covering anti-bot bypass, browser automation, and parallel HTTP extraction strategies with CSV output.",
+  "created_at": "2026-03",
+  "updated_at": "2026-03",
+  "tech_stack": [
+    "python",
+    "playwright",
+    "playwright-stealth",
+    "httpx",
+    "beautifulsoup4",
+    "pandas",
+    "scraperapi",
+    "asyncio"
+  ],
+  "status": "completed",
+  "visibility": "PUBLIC"
+}

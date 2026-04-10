@@ -1,0 +1,12 @@
+[
+  {
+    "module": "semantic_browser_scraper/scraper.py",
+    "summary": "Playwright + playwright-stealth browser scraper. Navigates to 99acres search results, scrolls to load dynamic content, anchors on the rupee symbol to find property cards, walks up the DOM to the card container, and parses inner text by keyword matching (price, BHK, sqft, contact type). Deduplicates by card text content. Outputs CSV.",
+    "file_url": "https://github.com/neural-arun/real_state_listing_scraper/blob/main/semantic_browser_scraper/scraper.py"
+  },
+  {
+    "module": "parallel_http_scraperapi/scraperv3.py",
+    "summary": "Browserless parallel HTTP scraper using httpx + asyncio + ScraperAPI. Phase 1: fetches all search pages simultaneously with asyncio.gather and extracts listing URLs from JSON-LD ItemList blocks. Phase 2: fetches all property detail pages concurrently (semaphore-throttled to 5) and parses structured data from JSON-LD schema types, with regex text-scan fallback for remaining N/A fields. Routes all traffic through ScraperAPI to bypass Cloudflare. Outputs per-run data quality report and CSV.",
+    "file_url": "https://github.com/neural-arun/real_state_listing_scraper/blob/main/parallel_http_scraperapi/scraperv3.py"
+  }
+]

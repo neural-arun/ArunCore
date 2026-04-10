@@ -1,0 +1,42 @@
+[
+  {
+    "module": "01_document_manifest",
+    "summary": "Scans the docs/ folder, identifies all PDF files, and writes a manifest.json that records each document's path, doc_id, doc_type (statute/constitution/judgment), and enabled status. Acts as the pipeline's source of truth.",
+    "file_url": "https://github.com/neural-arun/legal_RAG_system/blob/main/01_document_manifest.py"
+  },
+  {
+    "module": "02_extract_text",
+    "summary": "Reads manifest.json, opens each enabled PDF with pypdf, and extracts text page-by-page. Outputs raw_pages.json with per-page text and page numbers preserved for traceability.",
+    "file_url": "https://github.com/neural-arun/legal_RAG_system/blob/main/02_extract_text.py"
+  },
+  {
+    "module": "03_clean_and_structure",
+    "summary": "Removes front matter, noise pages, and headers from raw extracted text. Detects the true body start page for each document and outputs structured_documents.json ready for chunking.",
+    "file_url": "https://github.com/neural-arun/legal_RAG_system/blob/main/03_clean_and_structure.py"
+  },
+  {
+    "module": "04_chunk_documents",
+    "summary": "The core chunking module. Routes each document to a type-specific strategy: statutes are split at section boundaries, the Constitution at article boundaries, and judgments by paragraph blocks with a 3-paragraph sliding window (1 overlap). Uses regex patterns tuned for legal text. Validates minimum chunk length and deduplicates by chunk_id.",
+    "file_url": "https://github.com/neural-arun/legal_RAG_system/blob/main/04_chunk_documents.py"
+  },
+  {
+    "module": "05_validate_chunks",
+    "summary": "Runs quality checks over chunks.json: validates chunk_id format, checks page range consistency, flags suspiciously short chunks, and reports any metadata schema violations. Acts as a pre-embedding gate.",
+    "file_url": "https://github.com/neural-arun/legal_RAG_system/blob/main/05_validate_chunks.py"
+  },
+  {
+    "module": "06_embed_and_index",
+    "summary": "Reads chunks.json, generates embeddings using OpenAI text-embedding-3-small, and stores vectors + full metadata in a persistent ChromaDB collection named 'legal_rag' under db/.",
+    "file_url": "https://github.com/neural-arun/legal_RAG_system/blob/main/06_embed_and_index.py"
+  },
+  {
+    "module": "07_query",
+    "summary": "Three-tier retrieval engine. First attempts exact reference matching (regex-extracts section/article number from query, does direct metadata filter). Then runs semantic vector search from ChromaDB. Falls back to lexical TF scoring with domain-specific boosts if ChromaDB is unavailable. Has a built-in 10-case evaluation suite with PASS/FAIL reporting.",
+    "file_url": "https://github.com/neural-arun/legal_RAG_system/blob/main/07_query.py"
+  },
+  {
+    "module": "08_answer",
+    "summary": "Assembles the final prompt from retrieved chunks and sends to Groq llama-3.3-70b-versatile. System prompt enforces a strict no-hallucination policy. Returns 'I do not have information regarding this.' when retrieval is insufficient. CLI supports single-query and interactive loop modes.",
+    "file_url": "https://github.com/neural-arun/legal_RAG_system/blob/main/08_answer.py"
+  }
+]

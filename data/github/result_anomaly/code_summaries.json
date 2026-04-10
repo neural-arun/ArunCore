@@ -1,0 +1,17 @@
+[
+  {
+    "module": "extract_counts",
+    "summary": "Opens each of the three official UPPSC PDFs (prelims, mains, final) using pdfplumber, extracts text page by page, applies regex to find all 7-digit roll numbers (with 6-digit fallback), groups them by their first two digits (series prefix), and writes per-stage series counts to counts.json.",
+    "file_url": "https://github.com/neural-arun/result_anomaly/blob/main/extract_counts.py"
+  },
+  {
+    "module": "verify_extraction",
+    "summary": "A standalone verification script that independently confirms the total candidate counts extracted from each PDF match the officially published figures (15,066 prelims, 2,720 mains, 933 final). Proves the extraction captured 100% of candidates with no misses or duplicates.",
+    "file_url": "https://github.com/neural-arun/result_anomaly/blob/main/verify_extraction.py"
+  },
+  {
+    "module": "report.md",
+    "summary": "The statistical analysis report. Contains four structured tables showing distribution by roll number series at each exam stage, plus an expected vs. actual variance calculation demonstrating the 00 and 01 series received +136 seats above their proportional expectation across 15,066 candidates.",
+    "file_url": "https://github.com/neural-arun/result_anomaly/blob/main/report.md"
+  }
+]

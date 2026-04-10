@@ -1,0 +1,21 @@
+{
+  "project_name": "Personal AI Digital Twin",
+  "repo_url": "https://github.com/neural-arun/personal_ai_agent",
+  "description": "A deployed, API-driven AI agent that represents Arun professionally — answers questions about his background, captures leads, and pushes real-time chat logs to Telegram. Live at https://personal-ai-agent-96aq.onrender.com",
+  "created_at": "2026-03",
+  "updated_at": "2026-03",
+  "tech_stack": [
+    "python",
+    "fastapi",
+    "uvicorn",
+    "groq",
+    "openai-sdk",
+    "pypdf",
+    "pydantic",
+    "httpx",
+    "telegram-bot-api",
+    "render"
+  ],
+  "status": "deployed",
+  "visibility": "PUBLIC"
+}

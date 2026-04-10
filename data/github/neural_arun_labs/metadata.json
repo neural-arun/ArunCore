@@ -1,0 +1,15 @@
+{
+  "project_name": "Neural Arun Labs",
+  "repo_url": "https://github.com/neural-arun/neural_arun_labs",
+  "description": "A lab repository containing small, practical utility projects — including a file organiser that auto-sorts a folder into PDFs, Videos, Images, and Others, and a standalone real estate scraping experiment.",
+  "created_at": "2026-02",
+  "updated_at": "2026-03",
+  "tech_stack": [
+    "python",
+    "pathlib",
+    "playwright",
+    "pandas"
+  ],
+  "status": "completed",
+  "visibility": "PUBLIC"
+}
