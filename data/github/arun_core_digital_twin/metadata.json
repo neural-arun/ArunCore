@@ -1,0 +1,26 @@
+{
+  "project_name": "ArunCore (AI Digital Twin)",
+  "repo_url": "https://github.com/neural-arun/ArunCore",
+  "description": "A state-of-the-art, retrieval-augmented personal AI agent. It acts as a digital twin for Arun Yadav, synthesizing his professional history, technical expertise, and academic background into an interactive agency proxy.",
+  "created_at": "2026-04",
+  "updated_at": "2026-04-10",
+  "tech_stack": [
+    "python",
+    "fastapi",
+    "uvicorn",
+    "nextjs",
+    "typescript",
+    "react",
+    "langchain",
+    "chromadb",
+    "openai-embeddings",
+    "groq",
+    "cohere-rerank",
+    "telegram-api",
+    "styled-jsx",
+    "remark-gfm",
+    "react-markdown"
+  ],
+  "status": "active - production",
+  "visibility": "PUBLIC"
+}

@@ -1,0 +1,32 @@
+[
+  {
+    "module": "core/agent.py",
+    "summary": "The intelligent heart of ArunCore. Initializes the RAG engine with ChromaDB and BM25 retrievers. Defines the agentic reasoning loop using LangChain, including the 'Rolling Memory' system that summarizes conversation context every 4 turns. Houses the 'Search Budget' logic to prevent infinite synonym loops.",
+    "file_url": "https://github.com/neural-arun/ArunCore/blob/main/core/agent.py"
+  },
+  {
+    "module": "core/api.py",
+    "summary": "The FastAPI backend server. Handles the high-speed interface between the frontend and the AI core. Implements session-based message routing, JSON-based tool-calling execution, and the final 3-strike search budget enforcement. Serves as the primary bridge hosted on HuggingFace Spaces.",
+    "file_url": "https://github.com/neural-arun/ArunCore/blob/main/core/api.py"
+  },
+  {
+    "module": "core/ingest.py",
+    "summary": "The semantic indexing engine. Scans the 'data/' directory for Markdown and JSON project docs. Performs document-aware chunking, generates OpenAI text-embedding-3-small vectors, and serializes them into the persistent ChromaDB database. Uses deterministic chunk IDs to allow incremental updates without duplicates.",
+    "file_url": "https://github.com/neural-arun/ArunCore/blob/main/core/ingest.py"
+  },
+  {
+    "module": "core/bot.py",
+    "summary": "The asynchronous Telegram integration. Manages real-time alerts sent to Arun's smartphone. Functions as the 'Human-in-the-Loop' interface when the AI twin captures a professional lead or hits a knowledge gap that requires the real Arun's attention.",
+    "file_url": "https://github.com/neural-arun/ArunCore/blob/main/core/bot.py"
+  },
+  {
+    "module": "frontend/app/page.tsx",
+    "summary": "The mission-critical UI file. Implements a React-level 'Dual-Architecture' layout that physically splits components for Desktop vs. Mobile screens. Integrates ReactMarkdown and RemarkGFM for professional table and link rendering. Manages browser-side session persistence and high-end visual micro-animations.",
+    "file_url": "https://github.com/neural-arun/ArunCore/blob/main/frontend/app/page.tsx"
+  },
+  {
+    "module": "frontend/app/globals.css",
+    "summary": "The design system of ArunCore. Defines the 'Aura' dark-mode palette, custom glassmorphism tokens, and responsive global variables used across all layouts to maintain a premium, state-of-the-art aesthetic.",
+    "file_url": "https://github.com/neural-arun/ArunCore/blob/main/frontend/app/globals.css"
+  }
+]

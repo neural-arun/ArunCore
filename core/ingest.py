@@ -119,10 +119,11 @@ def main():
     ids_to_embed = []
     
     # 1. Gather & Process Files
-    for folder in INGEST_DIRS:
+    # Auto-scan all subdirectories in the data folder
+    all_folders = [f.name for f in DATA_DIR.iterdir() if f.is_dir()]
+    
+    for folder in all_folders:
         target_dir = DATA_DIR / folder
-        if not target_dir.exists():
-            continue
             
         for ext in ["*.md", "*.json"]:
             for filepath in target_dir.rglob(ext):

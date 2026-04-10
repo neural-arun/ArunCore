@@ -1,6 +1,12 @@
 {
     "data/github/README.md": "89c7f754b14c5d219a9b0d3f83865c15",
+    "data/github/Agentic_AI_Projects/master_portfolio_summary.md": "94218e1ab1f1e31b7351d6e140d72d7e",
     "data/github/Agentic_AI_Projects/readme.md": "918b806d490d03a9ba736276b9dc16b2",
+    "data/github/arun_core_digital_twin/architecture.md": "5732cadc282d151d0395249c21315a98",
+    "data/github/arun_core_digital_twin/decisions.md": "495efcb2b7e5690c7140dfa8024b2ed6",
+    "data/github/arun_core_digital_twin/features.md": "d4574415a1aeadf5961714bd1f8d0468",
+    "data/github/arun_core_digital_twin/overview.md": "98eb3e2fd823f7452ae832f5b4e36c2b",
+    "data/github/arun_core_digital_twin/technical_specs.md": "e3299b98bbf2b394e000e58286f5a401",
     "data/github/legal_RAG_system/architecture.md": "aafdd404cf78145119c0269230ef8887",
     "data/github/legal_RAG_system/decisions.md": "d0852714fccd33f1eb903c432395aa3e",
     "data/github/legal_RAG_system/readme.md": "fd5f6db10343461518f8fcf83de60276",
@@ -16,6 +22,8 @@
     "data/github/result_anomaly/readme.md": "a191fb0c26cb1b1d35742b70cfad2e24",
     "data/github/web_wizard/readme.md": "eaeca5ec5d83c9d71a079d1ffbae5282",
     "data/github/Agentic_AI_Projects/metadata.json": "1e5f4542e9d0b67dadbed557781c3fb0",
+    "data/github/arun_core_digital_twin/code_summaries.json": "f88572b18b344f6ff425a7b16d6b173f",
+    "data/github/arun_core_digital_twin/metadata.json": "fd7936435daf0f372b700db51673fc56",
     "data/github/legal_RAG_system/code_summaries.json": "876c9e9d15a117c843f5571c941860cf",
     "data/github/legal_RAG_system/metadata.json": "7be5d67aaed773aae6cd94c05c3e7e7d",
     "data/github/neural_arun_labs/metadata.json": "b37040f28da2124401df3226e5ab1363",
@@ -26,11 +34,12 @@
     "data/github/result_anomaly/code_summaries.json": "f37f99175974b87573a5c5941db3bab6",
     "data/github/result_anomaly/metadata.json": "ac8139723521dc9147dc1b2e3bc78ab1",
     "data/github/web_wizard/metadata.json": "d74ddd743029eb878fab15cde86abbdb",
-    "data/raw/personal_background.md": "74bcf003161f20b66201775b6ddcffac",
-    "data/raw/README.md": "8412054e97ec51136b955e6efa823819",
     "data/linkedin/posts.md": "5a926790ca5abc91619d0a39eb98190d",
     "data/linkedin/profile_summary.md": "759477fa54a35047731ac431d1bd8d12",
+    "data/raw/master_portfolio_summary.md": "94218e1ab1f1e31b7351d6e140d72d7e",
+    "data/raw/personal_background.md": "74bcf003161f20b66201775b6ddcffac",
+    "data/raw/README.md": "8412054e97ec51136b955e6efa823819",
     "data/static/public_profile.md": "5bfe1aef7918787d6117e3b02ad2fabc",
     "data/static/README.md": "e71befe905c6348f2d497aee35f37f81",
-    "data/static/rules_of_engagement.md": "4f762db1c551a493b00375765f6ba88e"
+    "data/static/rules_of_engagement.md": "e3fbba8381a2298732157a7f468ce1b6"
 }
