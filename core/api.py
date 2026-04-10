@@ -63,7 +63,7 @@ async def chat_endpoint(req: ChatRequest):
     
     scratchpad = []
     final_response = None
-    max_iterations = 3
+    max_iterations = 8
     iterations = 0
 
     # Executes the Agent-Tool Loop
