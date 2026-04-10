@@ -19,4 +19,4 @@ COPY . .
 EXPOSE 7860
 
 # Run both the Telegram Bot (in the background) and the FastAPI server
-CMD python core/bot.py & uvicorn core.api:app --host 0.0.0.0 --port 7860
+CMD python -m core.bot & uvicorn core.api:app --host 0.0.0.0 --port 7860
