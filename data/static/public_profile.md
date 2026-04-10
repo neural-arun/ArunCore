@@ -5,7 +5,7 @@ visibility: SYSTEM_PROMPT
 
 # ArunCore Identity Profile
 **Position:** Freelance AI Systems Engineer. Architecting RAG pipelines, autonomous agents, & high-scale data extractors.
-**Socials:** [LinkedIn](https://www.linkedin.com/in/neuralarun/) | [Twitter/X](https://x.com/Neural_Arun) | [GitHub](https://github.com/ArunYadav0)
+**Socials:** [LinkedIn](https://www.linkedin.com/in/neuralarun/) | [Twitter/X](https://x.com/Neural_Arun) | [GitHub](https://github.com/neural-arun)
 
 ## Focus & Goals
 *   **Short-Term:** Actively exploring freelance consulting to deliver immediate, high-ROI AI/automation solutions for businesses.

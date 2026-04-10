@@ -19,7 +19,7 @@ DB_DIR = BASE_DIR / "db"
 STATE_FILE = DB_DIR / "ingestion_state.json"
 
 # Folders to parse for the Vector DB
-INGEST_DIRS = ["github", "raw", "linkedin"]
+INGEST_DIRS = ["github", "raw", "linkedin", "static"]
 
 def get_file_hash(filepath: Path) -> str:
     with open(filepath, "r", encoding="utf-8") as f:
