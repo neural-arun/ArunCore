@@ -1,73 +1,93 @@
----
-title: ArunCore
-emoji: 🧠
-colorFrom: indigo
-colorTo: purple
-sdk: docker
-pinned: false
----
+# ArunCore: The AI Digital Twin & Agentic Architecture
 
-# 🤖 ArunCore: High-Precision AI Digital Twin
+**ArunCore** is a production-grade, stateful, retrieval-augmented AI agent engineered to serve as my personal digital proxy. It isn't just a simple chatbot; it is a full-stack, hybrid-search intelligence pipeline built to securely and accurately represent my professional background, technical decisions, and portfolio.
 
-ArunCore is a **State-of-the-Art RAG Agent** architected to act as a transparent, first-person proxy for Arun Yadav. It is designed to solve the "hallucination problem" in personal AI by utilizing a sophisticated, multi-layered retrieval and grounding pipeline.
-
-## 🌟 Live Ecosystem
-| Interface | URL | Status |
-|---|---|---|
-| **Web UI** | [aruncore.vercel.app](https://aruncore.vercel.app) | 🟢 Live |
-| **Telegram Bot** | Talk to @Arun_Core_Bot | 🟢 Live |
-| **Backend API** | [HuggingFace Spaces](https://huggingface.co/spaces/neural-arun/ArunCore) | 🟢 Online |
+This repository contains the entirety of the system: the Python backend (LangChain, ChromaDB, FastAPI), the data ingestion pipeline, and the ultra-optimized Next.js frontend GUI.
 
 ---
 
-## 🏗️ Technical Architecture
+## 🌟 High-Level Capabilities
 
-ArunCore is built using a **Decoupled Three-Tier Architecture**:
-
-### 1. The Brain (Core Agent Engine)
-- **Engine**: LangChain + Groq (Llama-3-70B) for reasoning.
-- **RAG Strategy**: Manual Hybrid Search (Vector + BM25) with **Cohere Reranking**. This ensures that the AI only "knows" what is explicitly in the database.
-- **Stateful Memory**: Custom `RollingMemory` class that triggers a background "Fast-LLM" (Llama-8B) for summarization, maintaining perfect conversational flow without hitting token limits.
-
-### 2. The Multi-Channel API
-- **FastAPI**: A high-performance backend serving the `/chat` endpoint.
-- **Session Management**: Maps unique session IDs to isolated memory buffers, allowing hundreds of users to talk simultaneously without cross-talk.
-- **Telegram Bridge**: A parallel process using `python-telegram-bot` with a custom Regex-to-HTML parser to deliver perfectly formatted mobile experiences.
-
-### 3. The Frontend
-- **Next.js 14**: A premium dark-mode Chat UI.
-- **Rich Interaction**: Real-time typing indicators, session persistence via `sessionStorage`, and fluid animations.
+1.  **Zero-Hallucination Retrieval System:** Features a custom hybrid-search mechanism combining **ChromaDB (semantic vector search)** using OpenAI Embeddings and a **BM25 Lexical Retriever (keyword exact match)**. This guarantees the AI never guesses or fabricates my experience.
+2.  **Cohere Reranking:** All retrieved results pass through Cohere's English V3 Reranker to surface the most contextually relevant chunks before passing them to the final LangChain prompt.
+3.  **Stateful Memory Loop:** Implements a rolling-memory summarization engine for conversational context retention without bloating the immediate context window.
+4.  **"3-Strike" Loop Control:** The LangChain routing agent has strict limits applied to its tool-calling process (max 3 database searches per query) to prevent endless recursive loops on ambiguous questions.
+5.  **Multi-Platform Presentation:** Incorporates a tailored Next.js UI using `ReactMarkdown` and custom styling for a sleek, dark-mode desktop presence with dynamic resizing for mobile compatibility.
+6.  **Human-in-the-Loop:** A native tool-call integration with the Telegram API alerts my personal device instantly if a user asks to connect, requires freelance negotiation, or submits a lead.
 
 ---
 
-## 📁 Repository Structure
+## 🏗️ System Architecture
 
-- [**/core**](./core): The logic layer. Contains the Agent loop, RAG pipeline, FastAPI server, and Telegram Bot.
-- [**/data**](./data): The knowledge base. Includes raw markdown, GitHub repo context, and LinkedIn history.
-- [**/db**](./db): Persistent ChromaDB vector store (Managed via Git LFS).
-- [**/frontend**](./frontend): The Next.js web application.
-- [**/docs**](./docs): Detailed workflows and system design documents.
+### 1. The Knowledge Base (`/data/`)
+The foundational data driving ArunCore is stored statically.
+*   **Static Data (`data/static/`)**: Holds the `public_profile.md` (resume details) and `rules_of_engagement.md` (strict behavioral blueprints for the LLM).
+*   **Dynamic Portfolios (`data/github/`)**: Folders containing `overview.md`, `metadata.json`, and `code_summaries.json` for every major project in my career.
 
----
+### 2. The Engine (`/core/`)
+*   **`ingest.py`**: The offline script that chunks all markdown files, vectorizes them using OpenAI Embeddings, and indexes them into ChromaDB.
+*   **`agent.py`**: Contains the core `ChatPromptTemplate`, tool bindings (`search_arun_knowledge`, `notify_arun`), and memory mechanics.
+*   **`api.py`**: The FastAPI server bridging the backend algorithms to the web client endpoints.
 
-## 🚀 Deployment Strategy
-
-- **Backend**: Hosted on **HuggingFace Spaces** using a custom **Docker** container. Both the API and Bot run in a single container for maximum resource efficiency.
-- **Frontend**: Hosted on **Vercel** for lightning-fast global delivery.
-- **Storage**: Uses **Git LFS** (Large File Storage) to push binary vector databases to GitHub, allowing "Battery-Included" deployment.
-
----
-
-## 🛠️ How I Built It (Key Engineering Decisions)
-- **Why Manual RRF?** I implemented manual Reciprocal Rank Fusion (0.7 Vector / 0.3 Keyword) to bypass library limitations and ensure technical project queries (like "Legal RAG") are prioritized over general chat.
-- **Why HTML Fallback?** Telegram's Markdown parser is fragile. I engineered a regex-based HTML converter in `bot.py` to guarantee a crash-free mobile experience.
-- **The "Veto" Rule**: Added strict prompt engineering to prevent the AI from hallucinating capabilities (e.g., it will never claim to be able to code in Next.js if it hasn't been taught that).
+### 3. The Client (`/frontend/`)
+A Next.js (TypeScript) single-page application.
+*   It maintains session state, handles the "typing" visual queues, manages strict layout breaks for Desktop/Mobile viewports, and overrides raw markdown into visually premium UI components.
 
 ---
 
-## 👤 Author
-**Arun Yadav** - AI Systems Engineer  
-[LinkedIn](https://www.linkedin.com/in/neuralarun/) | [Twitter](https://x.com/Neural_Arun) | [GitHub](https://github.com/neural-arun)
+## 🚀 Quick Start Guide
+
+### Prerequisites
+*   Python 3.10+
+*   Node.js (LTS Version)
+*   Access keys for: OpenAI, Groq, Cohere.
+
+### Backend Setup
+1.  **Clone & Install:**
+    ```bash
+    git clone https://github.com/neural-arun/ArunCore.git
+    cd ArunCore
+    python -m venv venv
+    venv\Scripts\activate
+    pip install -r requirements.txt
+    ```
+2.  **Environment Variables:** Create a `.env` file at the root.
+    ```env
+    OPENAI_API_KEY=your_key_here
+    GROQ_API_KEY=your_key_here
+    COHERE_API_KEY=your_key_here
+    TELEGRAM_BOT_TOKEN=your_bot_token  (Optional)
+    TELEGRAM_CHAT_ID=your_chat_id      (Optional)
+    ```
+3.  **Bootstrap the Database:** Run the ingestion script to vectorize the data folder.
+    ```bash
+    python core/ingest.py
+    ```
+4.  **Launch the Server:** Starts the FastAPI engine.
+    ```bash
+    uvicorn core.api:app --host 0.0.0.0 --port 8000
+    ```
+
+### Frontend Setup
+1.  **Install Dependencies:**
+    ```bash
+    cd frontend
+    npm install
+    ```
+2.  **Launch the UI:** Runs the development server on `localhost:3000`.
+    ```bash
+    npm run dev
+    ```
 
 ---
-*Powered by ArunCore Engine v1.0*
+
+## 📖 Navigation Guide
+
+For a deeper dive into scaling operations, deployment structures, or individual modules, please consult the dedicated internal documentation:
+*   [Scaling & Cloud Deployment (`docs/scaling_guide.md`)](docs/scaling_guide.md)
+*   [Data Updates (`docs/updating_digital_twin.md`)](docs/updating_digital_twin.md)
+*   [Frontend Internals (`frontend/README.md`)](frontend/README.md)
+*   [Core Backend Internals (`core/README.md`)](core/README.md)
+
+---
+*Built by Arun Yadav — Architecting Autonomous Intelligence.*

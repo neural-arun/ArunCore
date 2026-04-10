@@ -1,20 +1,16 @@
-# /data: The Knowledge Base
+# The Knowledge Base (`/data/`)
 
-This folder serves as the "Long-Term Memory" of ArunCore. It is partitioned based on the source of truth to ensure high-fidelity retrieval.
+This directory is the absolute source of truth for the digital twin's semantic memory. The data here is strictly separated into core identity configurations and isolated architectural projects.
 
-## 📁 Data Sources
+## Directory Breakdown
 
-- **/github**: Technical deep-dives. Contains summaries and architectures of key repositories (Legal RAG, Scrapers, etc.) to allow the AI to answer complex implementation questions.
-- **/linkedin**: Professional history. Includes profile summaries and specific high-impact posts.
-- **/static**: Behavioral rules. Contains the **Rules of Engagement (Veto Rules)** and the tech stack definitions.
-- **/raw**: Personal background. Handwritten notes on career goals, education, and professional philosophy.
-- **/test_set**: The evaluation data used by `evaluate.py` to audit the AI's accuracy.
+### `static/`
+The files in this folder are prioritized during parsing and inserted directly into the system prompt context. 
+*   **`public_profile.md`**: Defines global constants about Arun (location, high-level skills, direct links).
+*   **`rules_of_engagement.md`**: The behavioral constraint matrix. This dictates formatting limits (e.g., Markdown generation behavior) and topical vetos (e.g., refusing to answer salary questions).
 
-## 🧠 Engineering: Metadata Enrichment
-Every file in this directory is processed with specific metadata (Source, Topic, Date) during ingestion. This allows the AI to not just repeat text, but to actually **cite its sources** (e.g., "According to my LinkedIn post from April...").
-
-## 🛠️ Update Workflow
-To add new knowledge to ArunCore:
-1. Drop a new `.md` file into the appropriate subfolder.
-2. Run `python core/ingest.py` to update the vector database.
-3. Push the `db/` folder to HuggingFace.
+### `github/`
+This cluster contains isolated project nodes. When `ingest.py` runs, it recursively parses these sub-folders, converting the Markdown and JSON documents into deeply dense, interconnected vector maps.
+*   **Narrative Files (`overview.md`, `decisions.md`)**: Instructs the LLM on *why* certain actions were taken.
+*   **Structural Files (`metadata.json`)**: Allows precise routing parameters, ensuring the RAG pipeline understands technology stacks.
+*   **Master Indices (`master_portfolio_summary.md`)**: Used to seed global summary answers without requiring the LLM to process thousands of discrete vector chunks.

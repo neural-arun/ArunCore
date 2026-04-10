@@ -227,13 +227,6 @@ export default function ChatPage() {
         .markdown-bubble a { color: #6ee7b7; text-decoration: underline; font-weight: 600; transition: color 0.2s; }
         .markdown-bubble a:hover { color: white; }
         
-        /* CSS Fake Bullet Hack (Ignores actual headings) */
-        .markdown-bubble p:not(.welcome-p) > strong:first-child::before {
-          content: "• ";
-          color: white;
-          margin-right: 8px;
-        }
-
         /* Markdown Elite Formatting */
         .markdown-bubble ul, .markdown-bubble ol { margin: 16px 0 16px 24px; padding: 0; }
         .markdown-bubble li { margin-bottom: 8px; line-height: 1.6; padding-left: 4px; }
