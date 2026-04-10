@@ -24,3 +24,5 @@ data/test_set/evaluation_report.json
 # OS Junk
 .DS_Store
 Thumbs.db
+
+.vercel

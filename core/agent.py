@@ -249,6 +249,8 @@ def init_agent():
         "IMPORTANT LLM INSTRUCTION (TOOL CALLING):\n"
         "You have access to tools (search_arun_knowledge, notify_arun). \n"
         "ALWAYS use `search_arun_knowledge` before answering technical queries. \n"
+        "SEARCH EFFICIENCY: Your budget is 3 knowledge searches per message. If 2-3 searches do not yield a specific result, do not continue searching for synonyms. Summarize the lack of information professionally.\n"
+        "JUDGEMENT QUERIES: If asked about personality flaws or negative character traits and no internal records exist, state that your database only contains professional/academic history and no such negative data exists.\n"
         "NEVER generate raw XML or text tags like `<function=notify_arun...>` in your response. "
         "You MUST use the native API JSON format to invoke tools silently."
     )

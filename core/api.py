@@ -66,6 +66,9 @@ async def chat_endpoint(req: ChatRequest):
     max_iterations = 8
     iterations = 0
 
+    search_count = 0
+    max_search_limit = 3
+
     # Executes the Agent-Tool Loop
     while iterations < max_iterations:
         messages = prompt.format_messages(
@@ -83,18 +86,27 @@ async def chat_endpoint(req: ChatRequest):
         if ai_msg.tool_calls:
             scratchpad.append(ai_msg)
             for tc in ai_msg.tool_calls:
-                print(f"[API] Session {req.session_id} requested tool: {tc['name']}")
-                tool_func = global_tool_map.get(tc['name'])
+                tool_name = tc['name']
+                print(f"[API] Session {req.session_id} requested tool: {tool_name}")
                 
-                try:
-                    tool_result = tool_func.invoke(tc['args'])
-                except Exception as e:
-                    tool_result = f"Error executing tool: {e}"
+                # Check for search budget
+                if tool_name == "search_arun_knowledge":
+                    search_count += 1
+                
+                if search_count > max_search_limit:
+                    tool_result = f"SYSTEM WARNING: Search limit of {max_search_limit} reached for this specific message. DO NOT SEARCH AGAIN. You must now provide a final response based on the search results you already have above."
+                    print(f"[API] Search limit triggered for {req.session_id}")
+                else:
+                    tool_func = global_tool_map.get(tool_name)
+                    try:
+                        tool_result = tool_func.invoke(tc['args'])
+                    except Exception as e:
+                        tool_result = f"Error executing tool: {e}"
                 
                 # Report back to the LLM
                 scratchpad.append({
                     "role": "tool",
-                    "name": tc['name'],
+                    "name": tool_name,
                     "tool_call_id": tc['id'],
                     "content": str(tool_result)[:2000]
                 })
