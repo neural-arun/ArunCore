@@ -225,7 +225,7 @@ def init_agent():
     tools = [notify_arun, search_arun_knowledge]
     main_llm = ChatGroq(
         temperature=0.2, 
-        model_name="llama-3.3-70b-versatile", 
+        model_name="openai/gpt-oss-120b", 
         api_key=os.getenv("GROQ_API_KEY")
     ).bind_tools(tools)
 
@@ -251,8 +251,8 @@ def init_agent():
         "ALWAYS use `search_arun_knowledge` before answering technical queries. \n"
         "SEARCH EFFICIENCY: Your budget is 3 knowledge searches per message. If 2-3 searches do not yield a specific result, do not continue searching for synonyms. Summarize the lack of information professionally.\n"
         "JUDGEMENT QUERIES: If asked about personality flaws or negative character traits and no internal records exist, state that your database only contains professional/academic history and no such negative data exists.\n"
-        "NEVER generate raw XML or text tags like `<function=notify_arun...>` in your response. "
-        "You MUST use the native API JSON format to invoke tools silently."
+        "CRITICAL CONSTRAINT: YOU MUST NOT GENERATE RAW XML TAGS LIKE `<function=notify_arun...>` OR `<function=search_arun_knowledge>` IN YOUR TEXT RESPONSES. "
+        "DO NOT use text-based markdown blocks for tools. Use the native tooling API to invoke tools invisibly. Any XML tool usage is strictly forbidden."
     )
 
     prompt = ChatPromptTemplate.from_messages([
