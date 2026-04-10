@@ -67,7 +67,7 @@ ArunCore is built using a **Decoupled Three-Tier Architecture**:
 
 ## 👤 Author
 **Arun Yadav** - AI Systems Engineer  
-[LinkedIn](https://www.linkedin.com/in/neuralarun/) | [Twitter](https://x.com/Neural_Arun) | [GitHub](https://github.com/ArunYadav0)
+[LinkedIn](https://www.linkedin.com/in/neuralarun/) | [Twitter](https://x.com/Neural_Arun) | [GitHub](https://github.com/neural-arun)
 
 ---
 *Powered by ArunCore Engine v1.0*

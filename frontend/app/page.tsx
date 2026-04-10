@@ -143,7 +143,7 @@ export default function ChatPage() {
           {[
             { label: "LinkedIn", href: "https://www.linkedin.com/in/neuralarun/" },
             { label: "Twitter", href: "https://x.com/Neural_Arun" },
-            { label: "GitHub", href: "https://github.com/ArunYadav0" },
+            { label: "GitHub", href: "https://github.com/neural-arun" },
           ].map((link) => (
             <a
               key={link.label}
