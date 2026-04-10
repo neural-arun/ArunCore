@@ -51,4 +51,28 @@ python core/ingest.py
 ```
 This script acts as a compiler for the LLM. It will automatically crawl the newly added folders, perform LangChain structural chunking, calculate semantic embeddings by calling the OpenAI API, and seamlessly merge the physical vector graphs inside `db/`.
 
-**Done.** Within 30 seconds, your digital twin will permanently "remember" your new project.
+**Done.** Within 30 seconds, your local digital twin will permanently "remember" your new project.
+
+### 5. Cloud Deployment (Going Live for the World)
+Just running `ingest.py` only updates your *local* machine. For your globally accessible Digital Twin (`aruncore.vercel.app`) to access the new knowledge, you MUST push the updated `db/` folder to the Hugging Face backend.
+
+Follow these exact steps in your terminal:
+
+1. **Stage all new data and database chunks:**
+   ```bash
+   git add data/ db/
+   ```
+2. **Commit the knowledge update:**
+   ```bash
+   git commit -m "Knowledge Base Expand: Embedded new project data into the main vector graph"
+   ```
+3. **Push to GitHub (Your Backup):**
+   ```bash
+   git push origin main
+   ```
+4. **Push to Hugging Face (The Live API Engine):**
+   ```bash
+   git push hf main
+   ```
+
+**Production Status:** Once the Hugging Face Space finishes building (usually ~60 seconds), your online Vercel UI will instantly begin querying the newly injected knowledge. No frontend updates are required!

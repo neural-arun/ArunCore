@@ -4,6 +4,9 @@ import { useState, useRef, useEffect } from "react";
 import { v4 as uuidv4 } from "uuid";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeHighlight from "rehype-highlight";
+import rehypeRaw from "rehype-raw";
+import "highlight.js/styles/github-dark.css";
 
 interface Message {
   role: "user" | "assistant";
@@ -100,13 +103,29 @@ export default function ChatPage() {
           <div className="markdown-bubble">
             <ReactMarkdown 
               remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeRaw, rehypeHighlight]}
               components={{
                 a: (props) => <a {...props} target="_blank" rel="noopener noreferrer" />,
                 p: (props) => <p {...props} className={i === 0 && msg.role === "assistant" ? "welcome-p" : ""} />,
                 table: (props) => <div className="table-wrapper"><table {...props} /></div>,
+                code({ node, inline, className, children, ...props }: any) {
+                  return !inline ? (
+                    <pre className="code-block">
+                      <code className={className} {...props}>
+                        {children}
+                      </code>
+                    </pre>
+                  ) : (
+                    <code className="inline-code" {...props}>
+                      {children}
+                    </code>
+                  );
+                },
+                ul: (props) => <ul className="md-list" {...props} />,
+                ol: (props) => <ol className="md-list" {...props} />,
               }}
             >
-              {msg.content}
+              {msg.content.replace(/\n/g, "  \n")}
             </ReactMarkdown>
           </div>
         </div>
@@ -234,9 +253,23 @@ export default function ChatPage() {
         .markdown-bubble h3 { font-size: 1.15rem; color: white; margin: 24px 0 12px 0; font-weight: 600; }
         .markdown-bubble h1, .markdown-bubble h2 { color: white; margin: 24px 0 12px 0; font-weight: 700; }
         .markdown-bubble hr { border: 0; border-top: 1px dashed #3f3f46; margin: 24px 0; }
-        .markdown-bubble p { margin: 0 0 12px 0; }
+        
+        /* Fix spacing */
+        .markdown-bubble p { margin-bottom: 12px; white-space: pre-wrap; /* IMPORTANT */ }
         .markdown-bubble p:last-child { margin-bottom: 0; }
         .markdown-bubble strong { color: white; }
+
+        /* Code blocks */
+        .code-block { background: #0f172a; padding: 14px; border-radius: 10px; overflow-x: auto; font-size: 13px; margin: 12px 0; }
+
+        /* Inline code */
+        .inline-code { background: #27272a; padding: 3px 6px; border-radius: 6px; font-size: 13px; color: #a5b4fc; }
+
+        /* Lists fix */
+        .md-list { margin-left: 20px; margin-bottom: 12px; }
+
+        /* Fix line breaks */
+        .markdown-bubble br { display: block; margin-bottom: 6px; }
 
         .welcome-p { font-size: 1.1rem; font-weight: 500; }
         .table-wrapper { overflow-x: auto; margin: 10px 0; border: 1px solid var(--border); border-radius: 8px; }

@@ -1,0 +1,14 @@
+{
+  "project_name": "Core Identity & Master Summaries",
+  "repo_url": "https://github.com/neural-arun/ArunCore",
+  "description": "The foundational raw data module containing overarching personal background, identity logs, and the definitive master portfolio summary encompassing all of Arun Yadav's projects.",
+  "created_at": "2026-04",
+  "updated_at": "2026-04",
+  "tech_stack": [
+    "markdown",
+    "json",
+    "personal_data"
+  ],
+  "status": "core",
+  "visibility": "PUBLIC"
+}
