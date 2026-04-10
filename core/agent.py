@@ -218,7 +218,7 @@ def init_agent():
 
     # Init LLMs
     # 1. Fast LLM for Summarization
-    summary_llm = ChatOpenAI(temperature=0.0, model="gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"))
+    summary_llm = ChatOpenAI(temperature=0.0, model="gpt-5-nano", api_key=os.getenv("OPENAI_API_KEY"))
     
     # 2. Heavy LLM for Tool Calling & Generation
     tools = [notify_arun, search_arun_knowledge]
