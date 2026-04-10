@@ -20,7 +20,7 @@ function getOrCreateSessionId(): string {
   return id;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://neural-arun-aruncore.hf.space";
 
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([

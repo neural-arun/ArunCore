@@ -1,34 +1,20 @@
-# 📂 Data Layer: The Knowledge Base
+# /data: The Knowledge Base
 
-This directory manages the source material for the ArunCore RAG Agent. It is organized into tiers of sensitivity and purpose.
+This folder serves as the "Long-Term Memory" of ArunCore. It is partitioned based on the source of truth to ensure high-fidelity retrieval.
 
----
+## 📁 Data Sources
 
-## 📁 Sub-Directories
+- **/github**: Technical deep-dives. Contains summaries and architectures of key repositories (Legal RAG, Scrapers, etc.) to allow the AI to answer complex implementation questions.
+- **/linkedin**: Professional history. Includes profile summaries and specific high-impact posts.
+- **/static**: Behavioral rules. Contains the **Rules of Engagement (Veto Rules)** and the tech stack definitions.
+- **/raw**: Personal background. Handwritten notes on career goals, education, and professional philosophy.
+- **/test_set**: The evaluation data used by `evaluate.py` to audit the AI's accuracy.
 
-### 1. `raw/` (Primary Context)
-- **`personal_background.md`**: The source of truth for Arun's history, motivation, and "origin story."
-- **`architecture_notes.md`**: Technical documentation of the projects discussed.
-- **Decision: Markdown Format:** All data is stored in `.md`.
-    - *Why?* Markdown structure is natively understood by our `MarkdownHeaderTextSplitter`, allowing us to keep technical hierarchy intact during chunking.
+## 🧠 Engineering: Metadata Enrichment
+Every file in this directory is processed with specific metadata (Source, Topic, Date) during ingestion. This allows the AI to not just repeat text, but to actually **cite its sources** (e.g., "According to my LinkedIn post from April...").
 
-### 2. `static/` (System Core)
-- **`public_profile.md`**: The AI's "Identity Profile." Contains technical tech stacks and verified socials.
-- **`rules_of_engagement.md`**: The behavioral constitution. 
-- **Decision: System Prompt Injection:** These files are NOT searched in the database; they are injected directly into the **System Message** of every API call.
-    - *Why?* This ensures the AI *always* remembers its name, its "Veto Rule," and its socials, regardless of what the user asks.
-
-### 3. `test_set/` (Audit Data)
-- **`eval_set.json`**: The "Golden Truth." A 30-question blueprint of expected answers and sources.
-- **`evaluation_report.json`**: The automated output of the audit suite.
-
-### 4. Domain Data (`linkedin/`, `github/`)
-- Contains crawled/scraped content from social proof-of-work.
-- **Decision: Domain Segregation:** We keep GitHub READMEs separate from LinkedIn posts.
-    - *Why?* This allows us to add domain-specific metadata (e.g., `github_url`) during ingestion, which the AI can then use to provide direct links in its answers.
-
----
-
-## 📜 Principles
-- **Accuracy First:** Files are manually edited to ensure no conflicting dates or dead links.
-- **Conciseness:** We optimize for "Information Density"—removing fluff to ensure the AI retrieves maximally useful facts in the smallest possible number of tokens.
+## 🛠️ Update Workflow
+To add new knowledge to ArunCore:
+1. Drop a new `.md` file into the appropriate subfolder.
+2. Run `python core/ingest.py` to update the vector database.
+3. Push the `db/` folder to HuggingFace.

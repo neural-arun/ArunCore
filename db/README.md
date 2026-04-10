@@ -1,27 +1,17 @@
-# 🗄️ Database Layer: Persistent Storage
+# /db: Persistent Vector Store
 
-This directory contains the binary storage for the ArunCore knowledge base.
+This directory contains the binary database that stores the semantic embeddings of Arun's career and project history.
 
----
+## 🧰 Technology
+- **Engine**: ChromaDB (Serverless mode)
+- **Search Type**: Hybrid (Vector + Keyword)
+- **Persistance**: Binary flat-files managed via **Git LFS**.
 
-## 🏗️ Architecture
+## ⚠️ Important for Deployment
+Because HuggingFace and GitHub normally reject large binary files (like `chroma.sqlite3`), we use **Git LFS (Large File Storage)** to manage this directory. 
 
-### 1. Vector Store (ChromaDB)
-- **Technology:** [ChromaDB](https://www.trychroma.com/)
-- **Embeddings:** OpenAI `text-embedding-3-small`
-- **Logic:** Each markdown file is embedded into a 1536-dimensional vector space.
-- **Decision: Persistent Local Storage:** We use Chroma's persistent disk mode.
-    - *Why?* It allows the AI to stay fast and operational without needing a separate cloud database subscription, making the system self-contained and portable.
+### Why this approach?
+Most RAG systems require a paid hosted database (like Pinecone). By keeping the database binary in this `/db` folder, we can host the entire system **100% for free** on HuggingFace Spaces. The application simply reads from these local binary files at runtime.
 
-### 2. Metadata Index
-- Every chunk in this DB is tagged with:
-    - `source`: The physical file path.
-    - `chunk_id`: A unique hash for deduplication.
-    - `headers`: The markdown hierarchy (H1, H2, H3) the text belongs to.
-
----
-
-## ⚡ Handling the Index
-- **Pushing to Git:** In this project, the `db/` folder is NOT ignored (unlike standard AI apps).
-    - *Decision:* We choose to push the binary DB to GitHub so that the repository is "Battery Included." Anyone who clones it can run the agent instantly without needing to run an ingestion script or pay for embedding tokens.
-- **Corruption Safety:** If the DB files become corrupted, simply delete the `db/` folder and run `python core/ingest.py` to rebuild the index from the `data/` source.
+## 🛠️ Maintenance
+Do not manually edit the files in this directory. They are generated and updated automatically whenever you run `core/ingest.py`.

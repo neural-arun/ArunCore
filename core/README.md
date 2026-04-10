@@ -1,41 +1,28 @@
-# 🧠 Core Engine: The ArunCore Logic
+# /core: The Brain & Communication Layer
 
-This directory contains the primary execution logic for the ArunCore RAG Agent. It is divided into three functional layers: Ingestion, Reasoning (the Agent), and Auditing.
+This directory contains the primary execution logic of the ArunCore agent ecosystem. It is divided into the **Reasoning Engine**, the **Knowledge Ingestion Pipeline**, and the **Interface Bridges**.
 
----
+## 🛠️ Key Components
 
-## 🛠️ Components
+### 1. `agent.py` (The Reasoning Engine)
+The heart of the system.
+- **Stateful Tool-Calling**: Uses an autonomous loop where the AI decides when to use `search_arun_knowledge` or `notify_arun`.
+- **Rolling Memory**: A custom class that stores chat history and a running summary.
+- **Fast-LLM Summarization**: Uses a lightweight model (Llama-8B) to compress long histories behind the scenes, ensuring the context window never overflows.
 
-### 1. `ingest.py` (The Knowledge Constructor)
-**Purpose:** Handles the transformation of raw markdown files into a high-performance vector and lexical database.
-- **Decision: Semantic Header-Aware Splitting:** We use `MarkdownHeaderTextSplitter`. 
-    - *Why?* Character-based splitting breaks sentences mid-thought. Header splitting ensures each chunk "remembers" its context (e.g., a bullet point about a project knows it belongs to the "Project X" section because the header is injected into metadata).
-- **Decision: Incremental Hashing:** Every file's content is hashed (MD5) during ingestion.
-    - *Why?* To save costs and time. The system only re-embeds files that have changed, skipping those already in the DB.
+### 2. `api.py` (The Web Bridge)
+Exposes the agent to the internet via **FastAPI**.
+- **Session Isolation**: Every user gets a unique `RollingMemory` instance mapped to their `session_id`.
+- **CORS Enabled**: Configured to accept secure requests from the Vercel frontend.
 
-### 2. `agent.py` (The Interactive Brain)
-**Purpose:** The entry point for user interaction. It uses a Stateful Tool-Calling architecture.
-- **Decision: Option B Architecture (Tool-Calling):** Instead of a fixed pipeline, we give the LLM a "Search Tool".
-    - *Why?* An agent that "chooses" to search is smarter. It can decide to search multiple times for complex queries or skip searching for small talk ("Hi").
-- **Decision: Hybrid Retrieval Ensemble (0.7/0.3):** We merge OpenAI Embeddings (Vector) with BM25 (Lexical).
-    - *Why?* AI often misses exact names (like "99acres") in vector space. BM25 ensures technical keywords are never lost.
-- **Decision: Two-Stage Reranking:** We use Cohere's Rerank-v3.
-    - *Why?* A second model (the Cross-Encoder) re-scores the Top 20 results, ensuring the Final Top 5 are the absolute best matches for the LLM.
-- **Decision: Rolling Memory & Summary:**
-    - *Why?* To handle long chats without running out of context. Every 4 user messages, a "Fast LLM" (Llama 8B) summarizes the chat history to keep the "Heavy LLM" (Llama 70B/120B) fast and cheap.
+### 3. `bot.py` (The Telegram Bridge)
+Provides a native mobile experience.
+- **Async Polling**: Constantly listens for Telegram updates.
+- **HTML Formatting**: Intercepts LLM Markdown and converts it to Telegram-safe HTML (`<b>`, `<code>`, `<a>`) to prevent parser crashes.
 
-### 3. `evaluate.py` (The Audit Suite)
-**Purpose:** A rigorous test-runner that grades the agent's performance.
-- **Decision: Dual-Audit Metric:** Checks for both `Retrieval Accuracy` (did we find the right file?) and `Generation Accuracy` (did we mention the key topics?).
-- **Decision: Fuzzy Topic Matching:**
-    - *Why?* Exact phrase matching is too brittle. We use a word-overlap threshold to allow the AI to speak naturally while still verifying technical facts.
+### 4. `ingest.py` & `evaluate.py`
+- **Ingest**: Processes raw data into the ChromaDB vector store using Hybrid (Vector + Keyword) indexing.
+- **Evaluate**: A custom audit script that tests retrieval accuracy against a "Golden Test Set" to ensure the AI isn't hallucinating Arun's history.
 
----
-
-## 🏗️ Execution Flow
-1. **User Query** enters `agent.py`.
-2. **Rolling Memory** injects past context.
-3. **LLM** decides whether to call `search_arun_knowledge`.
-4. **Hybrid Search** triggers (Vector + BM25) -> **Cohere Rerank** -> Returns top 5 strings.
-5. **LLM** synthesizes the final response.
-6. **Telegram Tool** triggers if a Lead is captured or an error occurs.
+## 📐 Architecture Decision: "The Decoupled Bridge"
+I chose to separate `api.py` and `bot.py` into distinct files. While they both use the same agent logic from `agent.py`, this separation allows the Telegram bot to run as a background service while the FastAPI server handles the synchronous web traffic. This ensures that a surge in website visitors never slows down your private Telegram notifications.

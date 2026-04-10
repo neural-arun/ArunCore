@@ -1,13 +1,12 @@
-# docs/
+# /docs: System Documentation
 
-This folder contains the internal documentation, standard operating procedures (SOPs), and operational workflows for maintaining the ArunCore system. 
+This folder contains high-level documentation and operation manuals for maintaining ArunCore.
 
-Unlike the `data/` folder (which holds the knowledge base for the AI agent to read), this folder is specifically for **human developers** managing the system.
+## 📖 Available Docs
 
-## Folder Structure
+- **/workflows**: Contains step-by-step guides on technical operations:
+  - `adding_new_data.md`: How to expand the AI's knowledge base.
+- `system_design.md`: The architectural blueprint of the entire ecosystem.
 
-### `workflows/`
-Contains step-by-step guides on how to operate and scale the system without breaking its architecture.
-- `adding_new_data.md` — The exact ingestion workflow for adding new GitHub projects, updating LinkedIn posts, or modifying the core identity profile cleanly using file hashing and deterministic upserts.
-
-*(Future additions will include deployment workflows, database reset procedures, and model evaluation protocols).*
+## 📐 Purpose
+While the READMEs in each folder explain the "How" and the "File Structure," the documents in this `/docs` folder explain the **Engineering Philosophy** and the **Long-term Maintenance Strategy**.
