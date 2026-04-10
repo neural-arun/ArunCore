@@ -92,6 +92,11 @@ export default function ChatPage() {
     }
   };
 
+  const preprocessMarkdown = (text: string) => {
+    // If a line starts directly with **Bold Text**, forcefully inject a bullet point
+    return text.replace(/^(\s*\*\*.+?\*\*)/gm, '- $1');
+  };
+
   // COMMON RENDERER
   const ChatContent = () => (
     <div className="chat-limit">
@@ -106,7 +111,7 @@ export default function ChatPage() {
                 table: (props) => <div className="table-wrapper"><table {...props} /></div>,
               }}
             >
-              {msg.content}
+              {preprocessMarkdown(msg.content)}
             </ReactMarkdown>
           </div>
         </div>
