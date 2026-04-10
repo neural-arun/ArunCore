@@ -224,6 +224,8 @@ export default function ChatPage() {
         .message-row.user { justify-content: flex-end; }
         .markdown-bubble { max-width: 85%; padding: 14px 18px; line-height: 1.6; border-radius: 18px 18px 18px 4px; background: var(--bg-c); border: 1px solid var(--border); color: var(--text-p); }
         .message-row.user .markdown-bubble { border-radius: 18px 18px 4px 18px; background: #1e1b4b; border-color: var(--accent); }
+        .markdown-bubble a { color: #6ee7b7; text-decoration: underline; font-weight: 600; transition: color 0.2s; }
+        .markdown-bubble a:hover { color: white; }
         .welcome-p { font-size: 1.1rem; font-weight: 500; }
         .table-wrapper { overflow-x: auto; margin: 10px 0; border: 1px solid var(--border); border-radius: 8px; }
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
