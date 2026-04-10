@@ -22,7 +22,7 @@ function getOrCreateSessionId(): string {
   return id;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://neural-arun-aruncore.hf.space";
+const API_URL = "https://neural-arun-aruncore.hf.space";
 
 const Icons = {
   GitHub: () => (
@@ -40,18 +40,23 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content:
-        "Hey! I'm **ArunCore**, the AI digital twin of Arun Yadav. Ask me anything about his projects, skills, or background — I'm here to give you the real picture. 🚀",
+      content: "Hey! I'm **ArunCore**, the AI digital twin of Arun Yadav. Ask me anything about his projects, skills, or background — I'm here to give you the real picture. 🚀",
     },
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
   const sessionId = useRef<string>("");
 
   useEffect(() => {
     sessionId.current = getOrCreateSessionId();
+    
+    // Width detection
+    const handleResize = () => setIsMobile(window.innerWidth <= 850);
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   useEffect(() => {
@@ -61,7 +66,6 @@ export default function ChatPage() {
   const sendMessage = async () => {
     const userMessage = input.trim();
     if (!userMessage || isLoading) return;
-
     setInput("");
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
     setIsLoading(true);
@@ -70,28 +74,14 @@ export default function ChatPage() {
       const response = await fetch(`${API_URL}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          session_id: sessionId.current,
-          message: userMessage,
-        }),
+        body: JSON.stringify({ session_id: sessionId.current, message: userMessage }),
       });
-
-      if (!response.ok) throw new Error("API Error");
-
       const data = await response.json();
       setMessages((prev) => [...prev, { role: "assistant", content: data.reply }]);
     } catch {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          content:
-            "I'm having a moment of connectivity issues. Please try again shortly!",
-        },
-      ]);
+      setMessages((prev) => [...prev, { role: "assistant", content: "Connectivity issue. Try again!" }]);
     } finally {
       setIsLoading(false);
-      inputRef.current?.focus();
     }
   };
 
@@ -102,266 +92,146 @@ export default function ChatPage() {
     }
   };
 
+  // COMMON RENDERER
+  const ChatContent = () => (
+    <div className="chat-limit">
+      {messages.map((msg, i) => (
+        <div key={i} className={`message-row ${msg.role}`}>
+          <div className="markdown-bubble">
+            <ReactMarkdown 
+              remarkPlugins={[remarkGfm]}
+              components={{
+                a: (props) => <a {...props} target="_blank" rel="noopener noreferrer" />,
+                p: (props) => <p {...props} className={i === 0 && msg.role === "assistant" ? "welcome-p" : ""} />,
+                table: (props) => <div className="table-wrapper"><table {...props} /></div>,
+              }}
+            >
+              {msg.content}
+            </ReactMarkdown>
+          </div>
+        </div>
+      ))}
+      {isLoading && (
+        <div className="message-row assistant">
+          <div className="typing-indicator"><span></span><span></span><span></span></div>
+        </div>
+      )}
+      <div ref={bottomRef} />
+    </div>
+  );
+
   return (
-    <div className="app-container">
-      
-      {/* Sidebar - CSS will handle visibility */}
-      <aside className="sidebar">
-        <div className="profile-container">
-          <div className="profile-img-wrapper">
-            <img src="/picture.png" alt="Arun Yadav" className="profile-img" />
-          </div>
-          <div className="profile-text">
-            <h1 className="brand-name">ArunCore</h1>
-            <p className="status-text">
-              <span className="dot"></span>
-              Online — AI Digital Twin
-            </p>
-          </div>
-        </div>
-
-        <div className="social-links-sidebar">
-          {[
-            { label: "LinkedIn", href: "https://www.linkedin.com/in/neuralarun/", icon: <Icons.LinkedIn /> },
-            { label: "X", href: "https://x.com/Neural_Arun", icon: <Icons.X /> },
-            { label: "GitHub", href: "https://github.com/neural-arun", icon: <Icons.GitHub /> },
-          ].map((link) => (
-            <a key={link.label} href={link.href} target="_blank" rel="noopener noreferrer" className="social-icon">
-              {link.icon}
-            </a>
-          ))}
-        </div>
-      </aside>
-
-      {/* Main Container */}
-      <div className="main-content">
-        
-        {/* Mobile Header */}
-        <header className="mobile-header">
-           <img src="/picture.png" alt="Arun Yadav" className="mobile-avatar" />
-          <div className="mobile-header-text">
-            <div className="mobile-name">ArunCore</div>
-            <div className="mobile-status">
-              <span className="dot"></span>
-              Online
+    <div className="root-container">
+      {isMobile ? (
+        /* MOBILE VERSION */
+        <div className="mobile-layout">
+          <header className="mobile-header">
+            <img src="/picture.png" className="mobile-avatar" />
+            <div className="mobile-brand">
+              <div className="name">ArunCore</div>
+              <div className="status"><span className="dot"></span>Online</div>
             </div>
-          </div>
-        </header>
+          </header>
+          
+          <main className="mobile-chat">
+            <ChatContent />
+          </main>
 
-        {/* Chat Messages */}
-        <main className="chat-window">
-          <div className="chat-limit">
-            {messages.map((msg, i) => (
-              <div key={i} className={`message-row ${msg.role}`}>
-                <div className="markdown-bubble">
-                  <ReactMarkdown 
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      a: ({node, ...props}) => <a {...props} target="_blank" rel="noopener noreferrer" />,
-                      p: ({node, ...props}) => <p {...props} className={i === 0 && msg.role === "assistant" ? "welcome-p" : ""} />,
-                      table: ({node, ...props}) => <div className="table-wrapper"><table {...props} /></div>,
-                    }}
-                  >
-                    {msg.content}
-                  </ReactMarkdown>
-                </div>
+          <footer className="mobile-input">
+            <textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder="Message ArunCore..." rows={1} />
+            <button onClick={sendMessage} disabled={isLoading || !input.trim()}>➤</button>
+          </footer>
+        </div>
+      ) : (
+        /* DESKTOP VERSION */
+        <div className="desktop-layout">
+          <aside className="sidebar">
+            <div className="sidebar-top">
+              <div className="img-circle"><img src="/picture.png" /></div>
+              <h2>ArunCore</h2>
+              <p className="online-label"><span className="dot"></span>Online — AI Twin</p>
+            </div>
+            <div className="sidebar-bottom">
+              <div className="social-grid">
+                <a href="https://www.linkedin.com/in/neuralarun/" target="_blank"><Icons.LinkedIn /></a>
+                <a href="https://x.com/Neural_Arun" target="_blank"><Icons.X /></a>
+                <a href="https://github.com/neural-arun" target="_blank"><Icons.GitHub /></a>
               </div>
-            ))}
-            {isLoading && (
-              <div className="message-row assistant">
-                <div className="typing-indicator">
-                  <span></span><span></span><span></span>
-                </div>
+            </div>
+          </aside>
+          
+          <div className="desktop-main">
+            <main className="desktop-chat">
+              <ChatContent />
+            </main>
+            <footer className="desktop-input">
+              <div className="input-wrap">
+                <textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={handleKeyDown} placeholder="Ask Arun's twin anything..." rows={1} />
+                <button onClick={sendMessage} disabled={isLoading || !input.trim()}>➤</button>
               </div>
-            )}
-            <div ref={bottomRef} />
+            </footer>
           </div>
-        </main>
-
-        {/* Input Area */}
-        <footer className="input-footer">
-          <div className="input-limit">
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Ask Arun's twin..."
-              rows={1}
-            />
-            <button onClick={sendMessage} disabled={isLoading || !input.trim()}>
-              {isLoading ? "⏳" : <svg viewBox="0 0 24 24" width="24" height="24" fill="white"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>}
-            </button>
-          </div>
-        </footer>
-      </div>
+        </div>
+      )}
 
       <style jsx global>{`
         :root {
-          --bg-primary: #0a0a0c;
-          --bg-secondary: #131316;
-          --bg-card: #1c1c21;
-          --bg-input: #25252b;
-          --text-primary: #f4f4f5;
-          --text-secondary: #a1a1aa;
-          --accent: #6366f1;
-          --accent-glow: rgba(99, 102, 241, 0.4);
-          --border: #27272a;
-          --user-bubble: #1e1b4b;
+          --bg-p: #0a0a0c; --bg-s: #131316; --bg-c: #1c1c21;
+          --text-p: #f4f4f5; --text-s: #a1a1aa;
+          --accent: #6366f1; --border: #27272a;
         }
+        * { box-sizing: border-box; }
+        body, html { margin: 0; padding: 0; background: var(--bg-p); font-family: Inter, sans-serif; overflow: hidden; }
+        
+        .root-container { height: 100dvh; width: 100vw; display: flex; }
 
-        .app-container {
-          display: flex;
-          flex-direction: row;
-          height: 100dvh;
-          width: 100vw;
-          background: var(--bg-primary);
-          color: var(--text-primary);
-          font-family: 'Inter', system-ui, sans-serif;
-          overflow: hidden;
-        }
+        /* DESKTOP VIEW */
+        .desktop-layout { display: flex; width: 100%; height: 100%; }
+        .sidebar { width: 280px; background: var(--bg-s); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 40px 20px; }
+        .img-circle { width: 120px; height: 120px; border-radius: 50%; border: 3px solid var(--accent); overflow: hidden; margin: 0 auto 20px; box-shadow: 0 0 20px rgba(99,102,241,0.4); }
+        .img-circle img { width: 100%; height: 100%; object-fit: cover; }
+        .sidebar-top { text-align: center; }
+        .sidebar-top h2 { margin: 0; font-size: 24px; }
+        .online-label { color: #6ee7b7; font-size: 14px; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .dot { width: 8px; height: 8px; border-radius: 50%; background: #6ee7b7; box-shadow: 0 0 8px #6ee7b7; }
+        .sidebar-bottom { margin-top: auto; }
+        .social-grid { display: flex; gap: 15px; justify-content: center; }
+        .social-grid a { color: var(--text-s); padding: 10px; border-radius: 10px; border: 1px solid var(--border); transition: 0.2s; }
+        .social-grid a:hover { color: white; background: var(--accent); border-color: var(--accent); }
 
-        /* SIDEBAR */
-        .sidebar {
-          width: 320px;
-          background: var(--bg-secondary);
-          border-right: 1px solid var(--border);
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          padding: 60px 24px;
-          gap: 40px;
-          flex-shrink: 0;
-        }
+        .desktop-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        .desktop-chat { flex: 1; overflow-y: auto; padding: 40px 20px; }
+        .desktop-input { padding: 30px; background: var(--bg-s); border-top: 1px solid var(--border); }
+        .input-wrap { max-width: 800px; margin: 0 auto; display: flex; gap: 15px; align-items: flex-end; }
+        .desktop-input textarea { flex: 1; background: #25252b; border: 1px solid var(--border); border-radius: 12px; padding: 15px; color: white; resize: none; outline: none; font-size: 15px; }
 
-        .profile-container {
-          text-align: center;
-          width: 100%;
-        }
+        /* MOBILE VIEW */
+        .mobile-layout { display: flex; flex-direction: column; width: 100%; height: 100%; }
+        .mobile-header { padding: 12px 16px; background: var(--bg-s); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+        .mobile-avatar { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--accent); }
+        .mobile-brand .name { font-weight: 700; font-size: 16px; }
+        .mobile-brand .status { font-size: 12px; color: #6ee7b7; display: flex; align-items: center; gap: 4px; }
+        .mobile-chat { flex: 1; overflow-y: auto; padding: 20px 15px; }
+        .mobile-input { padding: 15px; background: var(--bg-s); border-top: 1px solid var(--border); display: flex; gap: 10px; align-items: flex-end; flex-shrink: 0; }
+        .mobile-input textarea { flex: 1; background: #25252b; border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; color: white; resize: none; outline: none; font-size: 14px; max-height: 100px; }
+        
+        button { width: 44px; height: 44px; border-radius: 10px; border: none; background: var(--accent); color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+        button:disabled { background: var(--border); opacity: 0.5; }
 
-        .profile-img-wrapper {
-          width: 160px;
-          height: 160px;
-          border-radius: 50%;
-          overflow: hidden;
-          margin: 0 auto 24px;
-          border: 4px solid var(--accent);
-          box-shadow: 0 0 40px var(--accent-glow);
-          transition: transform 0.3s ease;
-        }
-
-        .profile-img-wrapper:hover { transform: scale(1.05); }
-
-        .profile-img { width: 100%; height: 100%; object-fit: cover; }
-
-        .brand-name { font-size: 32px; font-weight: 800; margin: 0; letter-spacing: -1px; }
-
-        .status-text {
-          font-size: 16px; color: #6ee7b7; font-weight: 600;
-          display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px;
-        }
-
-        .dot { width: 10px; height: 10px; borderRadius: 50%; background: #6ee7b7; box-shadow: 0 0 10px #6ee7b7; }
-
-        .social-links-sidebar { display: flex; gap: 20px; margin-top: auto; }
-
-        .social-icon {
-          color: var(--text-secondary); padding: 12px; border-radius: 12px;
-          background: rgba(255,255,255,0.03); border: 1px solid var(--border);
-          transition: all 0.3s ease; display: flex; align-items: center;
-        }
-
-        .social-icon:hover {
-          color: white; background: var(--accent); border-color: var(--accent);
-          box-shadow: 0 8px 16px var(--accent-glow);
-        }
-
-        /* MAIN */
-        .main-content { display: flex; flex-direction: column; flex: 1; min-width: 0; }
-
-        .mobile-header { display: none; }
-
-        .chat-window { flex: 1; overflow-y: auto; padding: 32px 20px; }
-
-        .chat-limit { max-width: 850px; width: 100%; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
-
-        /* BUBBLES */
+        /* SHARED ELEMENTS */
+        .chat-limit { max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
         .message-row { display: flex; width: 100%; }
         .message-row.user { justify-content: flex-end; }
-        .message-row.assistant { justify-content: flex-start; }
-
-        .markdown-bubble {
-          max-width: 85%; padding: 18px 24px; line-height: 1.7;
-          border-radius: 22px 22px 22px 4px; border: 1px solid var(--border);
-          background: var(--bg-card); box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-        }
-
-        .message-row.user .markdown-bubble {
-          border-radius: 22px 22px 4px 22px; background: var(--user-bubble);
-          border-color: var(--accent); box-shadow: 0 8px 20px rgba(99,102,241,0.12);
-        }
-
-        .markdown-bubble a { color: #818cf8; text-decoration: underline; font-weight: 500; }
-        .markdown-bubble p { margin: 0 0 12px 0; font-size: 16px; }
-        .markdown-bubble p:last-child { margin-bottom: 0; }
-        .markdown-bubble .welcome-p { font-size: 20px; font-weight: 500; }
-
-        .table-wrapper { overflow-x: auto; margin: 16px 0; border-radius: 8px; border: 1px solid var(--border); }
-        table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        th { background: rgba(255,255,255,0.05); padding: 12px; text-align: left; border: 1px solid var(--border); }
-        td { padding: 12px; border: 1px solid var(--border); }
-
-        /* TYPING */
-        .typing-indicator { display: flex; gap: 8px; padding: 4px; }
-        .typing-indicator span {
-          width: 8px; height: 8px; background: var(--accent); border-radius: 50%;
-          animation: bounce 1.2s infinite ease-in-out;
-        }
-        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
-        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
-
-        @keyframes bounce {
-          0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
-          30% { transform: translateY(-10px); opacity: 1; }
-        }
-
-        /* INPUT */
-        .input-footer { padding: 24px; background: var(--bg-secondary); border-top: 1px solid var(--border); }
-        .input-limit { max-width: 850px; margin: 0 auto; display: flex; gap: 16px; align-items: flex-end; }
-
-        textarea {
-          flex: 1; background: var(--bg-input); border: 1px solid var(--border); border-radius: 16px;
-          padding: 16px 20px; color: white; fontSize: 16px; resize: none; outline: none;
-          maxHeight: 180px; transition: border-color 0.3s;
-        }
-        textarea:focus { border-color: var(--accent); }
-
-        button {
-          width: 54px; height: 54px; border-radius: 16px; border: none;
-          background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white;
-          cursor: pointer; display: flex; align-items: center; justify-content: center;
-          transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 20px var(--accent-glow);
-        }
-        button:disabled { background: var(--bg-input); cursor: not-allowed; box-shadow: none; }
-        button:active:not(:disabled) { transform: scale(0.95); }
-
-        /* RESPONSIVE */
-        @media (max-width: 850px) {
-          .sidebar { display: none; }
-          .mobile-header {
-            display: flex; padding: 16px 20px; background: var(--bg-secondary);
-            border-bottom: 1px solid var(--border); align-items: center; gap: 14px;
-          }
-          .mobile-avatar { width: 48px; height: 48px; border-radius: 50%; border: 2px solid var(--accent); }
-          .mobile-name { font-weight: 800; font-size: 18px; letter-spacing: -0.5px; }
-          .mobile-status { font-size: 14px; color: #6ee7b7; font-weight: 600; display: flex; align-items: center; gap: 6px; }
-          .chat-window { padding: 20px 12px; }
-          .markdown-bubble { max-width: 95%; padding: 14px 18px; }
-          .input-footer { padding: 16px; }
-          .input-limit { gap: 10px; }
-          textarea { padding: 12px 16px; border-radius: 12px; }
-          button { width: 48px; height: 48px; border-radius: 12px; }
-        }
+        .markdown-bubble { max-width: 85%; padding: 14px 18px; line-height: 1.6; border-radius: 18px 18px 18px 4px; background: var(--bg-c); border: 1px solid var(--border); color: var(--text-p); }
+        .message-row.user .markdown-bubble { border-radius: 18px 18px 4px 18px; background: #1e1b4b; border-color: var(--accent); }
+        .welcome-p { font-size: 1.1rem; font-weight: 500; }
+        .table-wrapper { overflow-x: auto; margin: 10px 0; border: 1px solid var(--border); border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th, td { padding: 8px; border: 1px solid var(--border); text-align: left; }
+        
+        .typing-indicator { display: flex; gap: 6px; padding: 5px; }
+        .typing-indicator span { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; animation: bounce 1s infinite alternate; }
+        @keyframes bounce { to { transform: translateY(-6px); opacity: 0.5; } }
       `}</style>
     </div>
   );
