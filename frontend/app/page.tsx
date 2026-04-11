@@ -11,6 +11,7 @@ import "highlight.js/styles/github-dark.css";
 interface Message {
   role: "user" | "assistant";
   content: string;
+  thoughts?: string[];
 }
 
 const SESSION_KEY = "aruncore_session_id";
@@ -140,14 +141,17 @@ export default function ChatPage() {
 
       const data = await response.json().catch(() => ({}));
       const fullReply = typeof data?.reply === "string" && data.reply.trim() ? data.reply : "Connectivity issue. Try again.";
+      const responseThoughts = Array.isArray(data?.thoughts) ? data.thoughts : [];
 
       setIsLoading(false);
       setIsTypingStr(true);
-      setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+      
+      // Add assistant message with tools/thoughts initially
+      setMessages((prev) => [...prev, { role: "assistant", content: "", thoughts: responseThoughts }]);
 
       const chars = fullReply.split("");
       let currentText = "";
-      const speed = chars.length > 600 ? 3 : 8;
+      const speed = chars.length > 600 ? 5 : 12;
 
       for (let i = 0; i < chars.length; i++) {
         currentText += chars[i];
@@ -163,9 +167,8 @@ export default function ChatPage() {
           return newMessages;
         });
 
-        if (i % 2 === 0) {
-          await new Promise((r) => setTimeout(r, speed));
-        }
+        // Add a tiny bit more delay between characters for better readability in video
+        await new Promise((r) => setTimeout(r, speed));
       }
 
       setIsTypingStr(false);
@@ -194,7 +197,17 @@ export default function ChatPage() {
     <div className="chat-limit">
       {messages.map((msg, i) => (
         <div key={`${msg.role}-${i}`} className={`message-row ${msg.role}`}>
-          <div className={`markdown-bubble ${msg.role === "assistant" ? "ai-bubble" : "user-bubble"}`}>
+          <div className={`markdown-bubble ${msg.role === "user" ? "user-bubble" : "ai-bubble"}`}>
+            {msg.role === "assistant" && msg.thoughts && msg.thoughts.length > 0 && (
+              <div className="thoughts-container">
+                {msg.thoughts.map((thought, tidx) => (
+                  <div key={tidx} className="thought-item">
+                    <span className="thought-check">✓</span>
+                    {thought}
+                  </div>
+                ))}
+              </div>
+            )}
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               rehypePlugins={[rehypeRaw, rehypeHighlight]}
@@ -225,7 +238,6 @@ export default function ChatPage() {
                 ol: (props) => <ol className="md-list" {...props} />,
               }}
             >
-              {/* Note: Removed the regex replace \n hack because it breaks normal markdown formatting */}
               {msg.content}
             </ReactMarkdown>
           </div>
@@ -374,6 +386,7 @@ export default function ChatPage() {
           --bg-c: #1A2233;
           --bg-hover: #1F2A3D;
           --surface: #162032;
+          --surface-l2: #121821;
           --text-p: #E5E7EB;
           --text-s: #6B7280;
           --text-m: #9CA3AF;
@@ -384,6 +397,7 @@ export default function ChatPage() {
           --border: #1F2937;
           --border-light: #2A3340;
           --green: #22c55e;
+          --font-inter: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
         }
 
         * {
@@ -395,7 +409,7 @@ export default function ChatPage() {
         body,
         html {
           background: var(--bg-p);
-          font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+          font-family: var(--font-inter);
           overflow: hidden;
           height: 100dvh;
           color: var(--text-p);
@@ -666,10 +680,35 @@ export default function ChatPage() {
         }
 
         .ai-bubble {
-          background: #121821;
-          border: 1px solid rgba(255, 255, 255, 0.05);
+          background: var(--surface-l2);
+          border: 1px solid var(--border-light);
           color: var(--text-p);
-          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), 0 1px 0 rgba(255,255,255,0.03) inset;
+          box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+        }
+
+        .thoughts-container {
+          margin-bottom: 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          padding-bottom: 12px;
+          border-bottom: 1px solid var(--border-light);
+        }
+
+        .thought-item {
+          font-size: 13px;
+          color: var(--accent);
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-family: var(--font-inter);
+          font-weight: 500;
+          opacity: 0.8;
+        }
+
+        .thought-check {
+          color: var(--accent);
+          font-size: 14px;
         }
 
         .user-bubble {

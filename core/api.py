@@ -46,6 +46,7 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
     session_id: str
+    thoughts: list[str] = []
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat_endpoint(req: ChatRequest):
@@ -62,6 +63,7 @@ async def chat_endpoint(req: ChatRequest):
     memory = active_sessions[req.session_id]
     
     scratchpad = []
+    thoughts = [] # To store names of tools called for UI visibility
     final_response = None
     max_iterations = 8
     iterations = 0
@@ -89,6 +91,14 @@ async def chat_endpoint(req: ChatRequest):
                 tool_name = tc['name']
                 print(f"[API] Session {req.session_id} requested tool: {tool_name}")
                 
+                # Add human-friendly labels to thoughts
+                if tool_name == "search_arun_knowledge":
+                    thoughts.append("Searching memory...")
+                elif tool_name == "notify_arun":
+                    thoughts.append("Notifying Arun...")
+                else:
+                    thoughts.append(f"Using {tool_name}...")
+
                 # Check for search budget
                 if tool_name == "search_arun_knowledge":
                     search_count += 1
@@ -122,7 +132,7 @@ async def chat_endpoint(req: ChatRequest):
     # Commit interaction to the specific user's memory
     memory.add_interaction(req.message, final_response)
     
-    return ChatResponse(reply=final_response, session_id=req.session_id)
+    return ChatResponse(reply=final_response, session_id=req.session_id, thoughts=thoughts)
 
 @app.get("/health")
 async def health_check():
