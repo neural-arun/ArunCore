@@ -88,13 +88,34 @@ import re
 
 def format_for_telegram(text: str) -> str:
     """Converts LLM Markdown into Telegram-safe HTML."""
-    # Convert **bold** to <b>bold</b>
-    text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)
-    # Convert `code` to <code>code</code>
+    # 1. Escape HTML special characters that aren't tags
+    text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+    # 2. Convert Bold: **text** -> <b>text</b>
+    # Use a more robust regex for bolding
+    text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
+
+    # 3. Convert Headings: ### Heading or ## Heading -> <b>HEADING</b>
+    text = re.sub(r'^###?\s+(.+)$', r'\n<b>\1</b>', text, flags=re.MULTILINE)
+
+    # 4. Convert Code blocks: ```code``` -> <pre>code</pre>
+    text = re.sub(r'```(?:[a-zA-Z]+)?\n?(.*?)\n?```', r'<pre>\1</pre>', text, flags=re.DOTALL)
+
+    # 5. Convert Inline Code: `code` -> <code>code</code>
     text = re.sub(r'`([^`]+)`', r'<code>\1</code>', text)
-    # Convert [text](url) to <a href="url">text</a>
-    text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2">\1</a>', text)
-    return text
+
+    # 6. Convert Bullet points: * item or - item -> • item
+    text = re.sub(r'^[*-]\s+', r'• ', text, flags=re.MULTILINE)
+
+    # 7. Convert Links: [text](url) -> <a href="url">text</a>
+    # Note: We must restore < > for the <a> tag after escaping earlier
+    def link_repl(match):
+        label, url = match.groups()
+        return f'<a href="{url}">{label}</a>'
+    
+    text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', link_repl, text)
+
+    return text.strip()
 
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
