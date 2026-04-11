@@ -14,16 +14,22 @@ pinned: false
 
 This repository contains the entirety of the system: the Python backend (LangChain, ChromaDB, FastAPI), the data ingestion pipeline, and the ultra-optimized Next.js frontend GUI.
 
+![ArunCore UI Showcase](Images/UI.png)
+
 ---
 
 ## 🌟 High-Level Capabilities
 
 1.  **Zero-Hallucination Retrieval System:** Features a custom hybrid-search mechanism combining **ChromaDB (semantic vector search)** using OpenAI Embeddings and a **BM25 Lexical Retriever (keyword exact match)**. This guarantees the AI never guesses or fabricates my experience.
+
+![Searching the Knowledge Base](Images/searching_the_DB.png)
 2.  **Cohere Reranking:** All retrieved results pass through Cohere's English V3 Reranker to surface the most contextually relevant chunks before passing them to the final LangChain prompt.
 3.  **Stateful Memory Loop:** Implements a rolling-memory summarization engine for conversational context retention without bloating the immediate context window.
 4.  **"3-Strike" Loop Control:** The LangChain routing agent has strict limits applied to its tool-calling process (max 3 database searches per query) to prevent endless recursive loops on ambiguous questions.
 5.  **Multi-Platform Presentation:** Incorporates a tailored Next.js UI using `ReactMarkdown` and custom styling for a sleek, dark-mode desktop presence with dynamic resizing for mobile compatibility.
 6.  **Human-in-the-Loop:** A native tool-call integration with the Telegram API alerts my personal device instantly if a user asks to connect, requires freelance negotiation, or submits a lead.
+
+![Telegram Bot Integration](Images/telegram_bot.png)
 
 ---
 
