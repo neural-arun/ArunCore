@@ -29,7 +29,7 @@ This repository contains the entirety of the system: the Python backend (LangCha
 
 ## 🏗️ System Architecture
 
-![ArunCore System Design](images/ArunCore_system_design.png)
+![ArunCore System Design](Images/ArunCore_system_design.png)
 
 ### 1. The Knowledge Base (`/data/`)
 The foundational data driving ArunCore is stored statically.
