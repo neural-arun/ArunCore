@@ -7,7 +7,7 @@
 ## 🏗️ Technical Portfolio Overview
 Arun Yadav specializes in building high-impact, production-ready AI systems that solve real-world data and automation problems. His portfolio ranges from specialized legal intelligence engines to high-scale web scrapers and autonomous digital twins.
 
-## 🚀 Key Pillar Projects
+## 🚀 Key Pillar Projects and complex projects
 
 ### 1. ArunCore: The AI Digital Twin
 - **Concept:** A 100% autonomous proxy for Arun's professional presence.
@@ -27,10 +27,6 @@ Arun Yadav specializes in building high-impact, production-ready AI systems that
 - **Tech Cache:** Python, Asyncio, Playwright, ScraperAPI.
 - **URL:** [Real Estate Scraper Repo](https://github.com/neural-arun/ArunCore/tree/main/data/github/real_state_listing_scraper)
 
-### 4. Web Wizard: Autonomous Browser Agent
-- **Concept:** An autonomous agent that navigates the web to perform complex tasks (booking, research, form-filling).
-- **Tech Cache:** GPT-4o integration, Playwright, tool-calling loops.
-- **URL:** [Web Wizard Repo](https://github.com/neural-arun/ArunCore/tree/main/data/github/web_wizard)
 
 ## 🛠️ Unified Technology Stack
 Across all projects, Arun maintains a consistent, high-standard stack:

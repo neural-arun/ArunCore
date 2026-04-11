@@ -368,18 +368,20 @@ export default function ChatPage() {
         @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 
         :root {
-          --bg-p: #09090b;
-          --bg-s: #111113;
-          --bg-c: #18181b;
-          --bg-hover: #27272a;
-          --text-p: #fafafa;
-          --text-s: #71717a;
-          --text-m: #a1a1aa;
-          --accent: #6366f1;
-          --accent-glow: rgba(99, 102, 241, 0.35);
+          --bg-p: #0B0F14;
+          --bg-s: #121821;
+          --bg-c: #1A2233;
+          --bg-hover: #1F2A3D;
+          --surface: #162032;
+          --text-p: #E5E7EB;
+          --text-s: #6B7280;
+          --text-m: #9CA3AF;
+          --accent: #6366F1;
+          --accent-hover: #4F46E5;
+          --accent-glow: rgba(99, 102, 241, 0.3);
           --accent-light: #818cf8;
-          --border: #27272a;
-          --border-light: #3f3f46;
+          --border: #1F2937;
+          --border-light: #2A3340;
           --green: #22c55e;
         }
 
@@ -431,16 +433,18 @@ export default function ChatPage() {
           width: 88px;
           height: 88px;
           border-radius: 50%;
-          border: 2px solid var(--accent);
+          padding: 2px;
+          background: linear-gradient(135deg, #6366F1, #8B5CF6, #06B6D4);
           overflow: hidden;
           margin: 0 auto 16px;
-          box-shadow: 0 0 24px var(--accent-glow);
+          box-shadow: 0 0 28px rgba(99, 102, 241, 0.45);
         }
 
         .img-circle img {
           width: 100%;
           height: 100%;
           object-fit: cover;
+          border-radius: 50%;
         }
 
         .sidebar-top h2 {
@@ -502,12 +506,14 @@ export default function ChatPage() {
           background: var(--bg-hover);
           color: var(--text-p);
           border-color: var(--border-light);
+          transform: translateX(2px);
         }
 
         .nav-btn.active {
-          background: rgba(99, 102, 241, 0.12);
-          border-color: rgba(99, 102, 241, 0.3);
+          background: rgba(99, 102, 241, 0.15);
+          border-color: rgba(99, 102, 241, 0.4);
           color: var(--accent-light);
+          box-shadow: 0 0 12px rgba(99, 102, 241, 0.15);
         }
 
         .sidebar-bottom {
@@ -519,15 +525,22 @@ export default function ChatPage() {
         .work-cta {
           font-size: 13px;
           font-weight: 600;
-          color: var(--accent-light);
+          color: white;
           text-align: center;
           margin-bottom: 16px;
           cursor: pointer;
-          transition: color 0.2s;
+          background: linear-gradient(135deg, #6366F1, #8B5CF6);
+          padding: 10px 16px;
+          border-radius: 999px;
+          transition: all 0.2s ease;
+          box-shadow: 0 0 16px rgba(99, 102, 241, 0.35);
+          display: block;
         }
 
         .work-cta:hover {
-          color: white;
+          background: linear-gradient(135deg, #4F46E5, #7C3AED);
+          transform: translateY(-1px);
+          box-shadow: 0 0 24px rgba(99, 102, 241, 0.5);
         }
 
         .social-grid {
@@ -652,18 +665,19 @@ export default function ChatPage() {
         }
 
         .ai-bubble {
-          background: #1c1c22;
-          border: 1px solid #2e2e38;
-          color: #e4e4e7;
-          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+          background: #121821;
+          border: 1px solid rgba(255, 255, 255, 0.05);
+          color: var(--text-p);
+          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4), 0 1px 0 rgba(255,255,255,0.03) inset;
         }
 
         .user-bubble {
           border-radius: 18px 18px 4px 18px;
-          background: #3730a3;
-          border: 1px solid #4338ca;
+          background: linear-gradient(135deg, #4F46E5, #6366F1);
+          border: 1px solid rgba(99, 102, 241, 0.4);
           color: white;
           font-weight: 500;
+          box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
         }
 
         .markdown-bubble a {
@@ -816,10 +830,10 @@ export default function ChatPage() {
         }
 
         .chip {
-          padding: 7px 14px;
-          background: var(--bg-c);
+          padding: 7px 16px;
+          background: #0F172A;
           border: 1px solid var(--border-light);
-          border-radius: 20px;
+          border-radius: 999px;
           color: var(--text-m);
           font-size: 13px;
           font-family: inherit;
@@ -835,7 +849,8 @@ export default function ChatPage() {
           background: rgba(99, 102, 241, 0.15);
           border-color: rgba(99, 102, 241, 0.5);
           color: var(--accent-light);
-          transform: translateY(-1px);
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
         }
 
         .chip:disabled {
@@ -858,7 +873,7 @@ export default function ChatPage() {
 
         textarea {
           flex: 1;
-          background: #18181b;
+          background: #0F172A;
           border: 1px solid var(--border-light);
           border-radius: 14px;
           padding: 14px 18px;
@@ -875,7 +890,7 @@ export default function ChatPage() {
 
         textarea:focus {
           border-color: var(--accent);
-          box-shadow: 0 0 0 3px var(--accent-glow);
+          box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
         }
 
         textarea::placeholder {
@@ -888,26 +903,26 @@ export default function ChatPage() {
           min-width: 46px;
           border-radius: 13px;
           border: none;
-          background: var(--accent);
+          background: linear-gradient(135deg, #6366F1, #8B5CF6);
           color: white;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
           transition: all 0.2s ease;
-          box-shadow: 0 0 18px var(--accent-glow);
+          box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
         }
 
         .send-btn:hover:not(:disabled) {
-          background: var(--accent-light);
-          transform: translateY(-1px);
-          box-shadow: 0 0 28px var(--accent-glow);
+          background: linear-gradient(135deg, #4F46E5, #7C3AED);
+          transform: translateY(-2px);
+          box-shadow: 0 0 32px rgba(99, 102, 241, 0.6);
         }
 
         .send-btn:disabled {
           background: var(--border);
           box-shadow: none;
-          opacity: 0.5;
+          opacity: 0.4;
           cursor: not-allowed;
           transform: none;
         }

@@ -1,14 +1,321 @@
 {
-  "project_name": "Core Identity & Master Summaries",
+  "document_id": "raw/all_projects_summary",
+  "document_type": "master_summary",
+  "source_file": "all_projects_summary.md",
+  "author": "Arun Yadav",
   "repo_url": "https://github.com/neural-arun/ArunCore",
-  "description": "The foundational raw data module containing overarching personal background, identity logs, and the definitive master portfolio summary encompassing all of Arun Yadav's projects.",
-  "created_at": "2026-04",
-  "updated_at": "2026-04",
-  "tech_stack": [
-    "markdown",
-    "json",
-    "personal_data"
+  "visibility": "PUBLIC",
+  "status": "active",
+  "created_at": "2026-04-11",
+  "updated_at": "2026-04-11",
+
+  "purpose": "Definitive master knowledge summary for the ArunCore RAG system. This document aggregates every project, data source, identity layer, and engineering decision documented across all sub-directories of /data/. It is the highest-priority seed document for answering broad portfolio, background, and identity questions without requiring multi-chunk retrieval.",
+
+  "retrieval_priority": "HIGH",
+  "retrieval_notes": "Should be retrieved for any broad question about Arun's portfolio, projects, skills, background, or identity. Do NOT bypass this document for questions like 'What has Arun built?', 'Tell me all projects', 'What is Arun's tech stack?', or 'Tell me about Arun'. This is the global index — it answers first, specific project files deepen.",
+
+  "covers_documents": [
+    "data/github/arun_core_digital_twin/overview.md",
+    "data/github/arun_core_digital_twin/architecture.md",
+    "data/github/arun_core_digital_twin/features.md",
+    "data/github/arun_core_digital_twin/decisions.md",
+    "data/github/legal_RAG_system/readme.md",
+    "data/github/legal_RAG_system/architecture.md",
+    "data/github/legal_RAG_system/decisions.md",
+    "data/github/real_state_listing_scraper/readme.md",
+    "data/github/real_state_listing_scraper/architecture.md",
+    "data/github/real_state_listing_scraper/decisions.md",
+    "data/github/personal_ai_agent/readme.md",
+    "data/github/personal_ai_agent/architecture.md",
+    "data/github/personal_ai_agent/decisions.md",
+    "data/github/result_anomaly/readme.md",
+    "data/github/result_anomaly/architecture.md",
+    "data/github/result_anomaly/decisions.md",
+    "data/github/Agentic_AI_Projects/readme.md",
+    "data/github/Agentic_AI_Projects/master_portfolio_summary.md",
+    "data/github/web_wizard/readme.md",
+    "data/github/neural_arun_labs/readme.md",
+    "data/linkedin/profile_summary.md",
+    "data/static/public_profile.md",
+    "data/static/rules_of_engagement.md",
+    "data/raw/personal_background.md"
   ],
-  "status": "core",
-  "visibility": "PUBLIC"
+
+  "projects_indexed": [
+    {
+      "name": "ArunCore — AI Digital Twin",
+      "slug": "arun_core_digital_twin",
+      "status": "active - production",
+      "tier": 1,
+      "type": "rag_agent",
+      "repo": "https://github.com/neural-arun/ArunCore",
+      "tech_stack": [
+        "python", "fastapi", "uvicorn", "nextjs", "react", "typescript",
+        "chromadb", "openai-embeddings", "groq", "cohere-rerank",
+        "telegram-api", "git-lfs", "huggingface-spaces", "vercel",
+        "langchain", "bm25", "react-markdown", "remark-gfm", "styled-jsx"
+      ],
+      "key_concepts": [
+        "digital twin", "RAG pipeline", "hybrid retrieval", "agentic reasoning loop",
+        "rolling memory", "dual-architecture layout", "zero hallucination",
+        "real-time lead capture", "telegram integration", "cohere rerank"
+      ],
+      "description": "State-of-the-art AI Digital Twin for Arun Yadav. 3-layer architecture: Next.js frontend, FastAPI backend on HuggingFace, Hybrid RAG (ChromaDB + BM25 + Cohere Rerank). Includes real-time Telegram lead alerts, 3-Strike search budget, rolling conversation memory, and React-level mobile/desktop layout split."
+    },
+    {
+      "name": "Legal RAG System — Indian Legislative Intelligence",
+      "slug": "legal_RAG_system",
+      "status": "completed",
+      "tier": 1,
+      "type": "rag_pipeline",
+      "repo": "https://github.com/neural-arun/legal_RAG_system",
+      "tech_stack": [
+        "python", "langchain", "chromadb", "groq", "openai-embeddings",
+        "pdfplumber", "pypdf", "bm25", "regex", "python-dotenv"
+      ],
+      "key_concepts": [
+        "document-aware chunking", "8-stage pipeline", "legal RAG",
+        "IPC", "Indian Constitution", "court judgments",
+        "exact reference extraction", "semantic search", "lexical fallback",
+        "no hallucination", "validation gate", "sequential scripts",
+        "section boundary", "article boundary", "paragraph sliding window"
+      ],
+      "corpus": ["IPC.pdf", "constitution.pdf", "case_1.PDF", "case_2.PDF"],
+      "description": "8-stage sequential RAG pipeline for Indian legal documents. Document-type-aware chunking: IPC → section boundaries, Constitution → article boundaries, Judgments → 3-paragraph sliding window. 3-tier retrieval: exact reference regex match → semantic ChromaDB search → lexical TF fallback. Groq llama-3.3-70b with strict no-hallucination policy."
+    },
+    {
+      "name": "99acres Real Estate Scraper Suite",
+      "slug": "real_state_listing_scraper",
+      "status": "completed",
+      "tier": 1,
+      "type": "web_scraper",
+      "repo": "https://github.com/neural-arun/real_state_listing_scraper",
+      "tech_stack": [
+        "python", "playwright", "playwright-stealth", "httpx",
+        "scraperapi", "asyncio", "pandas", "beautifulsoup4"
+      ],
+      "key_concepts": [
+        "web scraping", "bot bypass", "cloudflare bypass", "stealth browser",
+        "semantic DOM anchoring", "JSON-LD extraction", "async HTTP",
+        "scraperapi proxy", "concurrent scraping", "asyncio semaphore",
+        "real estate data", "99acres", "playwright-stealth", "http2"
+      ],
+      "scrapers": [
+        "v1 - Semantic Browser (Playwright + stealth, ₹ DOM anchor)",
+        "v2 - Deep Browser (Playwright, per-listing page navigation)",
+        "v3 - Parallel HTTP (async HTTPX + ScraperAPI residential proxy + JSON-LD)"
+      ],
+      "output_schema": ["City", "Price", "Location", "Size (sqft)", "Contact Info", "URL"],
+      "description": "3-track scraper suite for 99acres.com (Cloudflare-protected). v1: Playwright-stealth with semantic ₹ currency anchor for DOM traversal. v2: Deep per-listing page crawler. v3: Async HTTP/2 via ScraperAPI proxy + JSON-LD structured data extraction. asyncio.gather for parallel fetching, Semaphore(5) throttle. All output unified CSV format."
+    },
+    {
+      "name": "Personal AI Digital Twin",
+      "slug": "personal_ai_agent",
+      "status": "deployed",
+      "tier": 1,
+      "type": "deployed_agent",
+      "repo": "https://github.com/neural-arun/personal_ai_agent",
+      "live_url": "https://personal-ai-agent-96aq.onrender.com",
+      "hosting": "Render (free tier)",
+      "tech_stack": [
+        "python", "fastapi", "uvicorn", "groq", "openai-sdk",
+        "telegram-bot-api", "httpx", "render"
+      ],
+      "key_concepts": [
+        "persona injection", "tool-calling agent loop", "multi-model fallback",
+        "lead capture", "session memory", "telegram logging",
+        "agentic chat loop", "in-memory session state"
+      ],
+      "model_fallback_chain": [
+        "llama-3.3-70b-versatile",
+        "qwen3-32b",
+        "llama-4-scout",
+        "llama-3.1-8b-instant"
+      ],
+      "description": "Deployed FastAPI AI agent speaking as Arun. Persona loaded from summary.txt at startup. Agentic tool-calling loop (up to 3 iterations per message). 4-model Groq fallback chain for production resilience. Lead capture + Telegram push notifications. In-memory session history trimmed to last 6 turns. Live on Render."
+    },
+    {
+      "name": "UPPSC PCS 2024 Statistical Audit",
+      "slug": "result_anomaly",
+      "status": "completed",
+      "tier": 1,
+      "type": "data_analysis",
+      "repo": "https://github.com/neural-arun/result_anomaly",
+      "tech_stack": ["python", "pdfplumber", "regex", "pandas", "json"],
+      "key_concepts": [
+        "statistical audit", "PDF extraction", "UPPSC", "examination results",
+        "roll number series", "selection rate anomaly", "data transparency",
+        "regex extraction", "series prefix grouping", "verification script"
+      ],
+      "key_findings": {
+        "series_00_01_selection_rate": "8.95%",
+        "series_02_05_selection_rate": "4.85%",
+        "statistical_excess_seats": "+136",
+        "concentration_at_final": "47.3% of final selections from 00 & 01 series",
+        "total_prelims": 15066,
+        "total_mains": 2720,
+        "total_final": 933
+      },
+      "description": "Two-script Python pipeline that extracts every roll number from official UPPSC PCS 2024 PDFs, groups by series prefix (first 2 digits), and tracks survival rates across all 3 exam stages. Key finding: 00 & 01 series had 8.95% selection rate vs 4.85% for 02-05 series — +136 excess seats above proportional expectation. Fully verifiable from public PDFs."
+    },
+    {
+      "name": "Agentic AI Projects — Mini-Agent Collection",
+      "slug": "Agentic_AI_Projects",
+      "status": "completed",
+      "tier": 2,
+      "type": "learning_collection",
+      "repo": "https://github.com/neural-arun/Agentic_AI_Projects",
+      "tech_stack": [
+        "python", "openai", "fastapi", "gradio",
+        "pydantic", "tiktoken", "httpx", "tenacity"
+      ],
+      "sub_projects": [
+        "01_AI_auditor — LLM content auditor with async + iterative versions",
+        "02_cold_email_outreach — Personalised cold email generator from me/ context",
+        "03_what_I_can_do_bot — Single-purpose capabilities persona agent",
+        "04_personal_career_agent — Direct predecessor to personal_ai_agent"
+      ],
+      "key_concepts": [
+        "tool-calling loops", "multi-step LLM orchestration",
+        "agent design patterns", "cold email", "AI auditor",
+        "persona agent", "agentic experiments"
+      ],
+      "description": "4 standalone agentic AI experiments exploring tool-calling, persona injection, multi-step orchestration, and structured LLM evaluation. Includes an AI content auditor (sync + async), a cold email outreach agent, a capabilities chatbot, and the first-generation personal career agent that evolved into the deployed personal_ai_agent."
+    },
+    {
+      "name": "Web Wizard — Playwright Automation Curriculum",
+      "slug": "web_wizard",
+      "status": "work-in-progress",
+      "tier": 2,
+      "type": "learning_curriculum",
+      "repo": "https://github.com/neural-arun/web_wizard",
+      "tech_stack": [
+        "python", "playwright", "pytest", "pandas", "sqlalchemy",
+        "postgresql", "redis", "celery", "docker", "chromadb", "langchain"
+      ],
+      "curriculum_parts": [
+        "Part 1 — Foundations: async, HTTP internals, DOM, DevTools, Playwright core, network interception",
+        "Part 2 — Advanced Scraping: anti-bot, stealth, async concurrency, Postgres, Docker, pytest CI",
+        "Part 3 — Production & AI: SPAs, Celery/RabbitMQ, multi-step auth, Playwright as LLM agent tool"
+      ],
+      "key_concepts": [
+        "playwright curriculum", "web automation", "stealth scraping",
+        "async concurrency", "distributed crawler", "celery orchestration",
+        "playwright + LLM", "docker ci", "infinite scroll", "XHR intercept"
+      ],
+      "description": "12-module self-directed Playwright automation curriculum. Spans from browser automation basics to distributed Celery-orchestrated crawlers with vector DB integration. Planned capstone: Dockerized, queue-backed, AI-integrated crawler."
+    },
+    {
+      "name": "Neural Arun Labs — Utility Scripts & Experiments",
+      "slug": "neural_arun_labs",
+      "status": "completed",
+      "tier": 2,
+      "type": "utility_scripts",
+      "repo": "https://github.com/neural-arun/neural_arun_labs",
+      "tech_stack": ["python", "pathlib", "playwright", "pandas"],
+      "sub_projects": [
+        "01_file_organiser — Auto-sorts folder into PDFs, Videos, Images, Others by file extension",
+        "02_real_estate_scraping — Early 99acres scraping experiment, foundation for the scraper suite"
+      ],
+      "key_concepts": [
+        "file organizer", "automation utility", "pathlib",
+        "real estate scraping experiment", "web scraping prototype"
+      ],
+      "description": "Personal lab repo. File organiser: detects extensions, creates typed subdirectories, moves files — genuine daily-use utility. Real estate scraping experiment: early 99acres prototype that became the foundation for the full scraper suite."
+    }
+  ],
+
+  "identity_layers": {
+    "public_profile": {
+      "file": "data/static/public_profile.md",
+      "load_type": "SYSTEM_PROMPT_INJECTION",
+      "description": "Always-loaded baseline identity. Position, tech stack, social links, short/long-term goals, engineering philosophy. Never retrieved via vector search — injected directly on every query."
+    },
+    "personal_background": {
+      "file": "data/raw/personal_background.md",
+      "load_type": "RAG_RETRIEVAL",
+      "description": "Personal and academic narrative. Non-linear journey: NEET → JEE → self-taught engineering. Started coding on PyDroid 3 on a phone. Resilience-first mindset. Used for personal questions: 'How did you start?', 'What's your background?', 'Did you go to CS college?'"
+    },
+    "rules_of_engagement": {
+      "file": "data/static/rules_of_engagement.md",
+      "load_type": "SYSTEM_PROMPT_INJECTION",
+      "description": "Agent behavioral constraints. Truth-only rule, source citation requirement, fallback behavior, tone guidelines, topical vetoes. Never retrieved — always injected."
+    },
+    "linkedin_profile": {
+      "file": "data/linkedin/profile_summary.md",
+      "load_type": "RAG_RETRIEVAL",
+      "description": "LinkedIn headline, about section, experience, education. Used for professional identity questions."
+    }
+  },
+
+  "query_routing_hints": {
+    "broad_portfolio_questions": [
+      "What has Arun built?",
+      "Tell me all projects",
+      "What is Arun's tech stack?",
+      "Show me Arun's best projects",
+      "What can Arun do?",
+      "What kind of AI systems does Arun build?"
+    ],
+    "personal_background_questions": [
+      "How did Arun get into engineering?",
+      "What is Arun's background?",
+      "Did Arun go to a CS college?",
+      "Tell me about Arun's journey",
+      "How did Arun start coding?"
+    ],
+    "project_deep_dives": {
+      "note": "For deep project questions, prefer specific project files over this summary",
+      "examples": [
+        "Why did Arun use ChromaDB? → legal_RAG_system/decisions.md",
+        "How does ArunCore's memory work? → arun_core_digital_twin/decisions.md",
+        "How does the scraper bypass Cloudflare? → real_state_listing_scraper/decisions.md"
+      ]
+    }
+  },
+
+  "tech_domains_covered": {
+    "rag_and_vector_search": [
+      "chromadb", "openai-embeddings", "text-embedding-3-small",
+      "cohere-rerank", "bm25", "hybrid-retrieval", "langchain"
+    ],
+    "llm_models_used": [
+      "groq/llama-3.3-70b-versatile", "groq/qwen3-32b",
+      "groq/llama-4-scout", "groq/llama-3.1-8b-instant",
+      "openai/gpt-4o", "cohere/rerank-v3"
+    ],
+    "web_automation_and_scraping": [
+      "playwright", "playwright-stealth", "httpx", "scraperapi",
+      "asyncio", "json-ld extraction", "dom traversal", "cloudflare bypass"
+    ],
+    "backend_api": ["fastapi", "uvicorn", "flask", "render", "huggingface-spaces"],
+    "frontend": ["nextjs-15", "react", "typescript", "vanilla-css", "styled-jsx"],
+    "data_engineering": ["pdfplumber", "pandas", "numpy", "regex", "json"],
+    "infrastructure": [
+      "vercel", "render", "huggingface-spaces", "git-lfs",
+      "docker", "redis", "celery", "postgresql"
+    ],
+    "notifications": ["telegram-bot-api"],
+    "agentic_frameworks_in_learning": ["langgraph", "crewai", "autogen", "mcp"]
+  },
+
+  "arun_profile_snapshot": {
+    "name": "Arun Yadav",
+    "handle": "neural-arun",
+    "title": "Freelance AI Systems Engineer",
+    "specialization": "RAG pipelines, autonomous agents, production-grade data extractors",
+    "github": "https://github.com/neural-arun",
+    "linkedin": "https://www.linkedin.com/in/neuralarun/",
+    "twitter_x": "https://x.com/Neural_Arun",
+    "education": "B.Sc. (Botany, Zoology, Chemistry) — Dr. Ram Manohar Lohia Awadh University, Faizabad",
+    "self_directed_learning": "Advanced AI Engineering — LangGraph, CrewAI, AutoGen, MCP",
+    "origin_story": "Started coding in Python on PyDroid 3 on a smartphone. No laptop initially. Pivoted from NEET/JEE pre-med track to full-stack AI engineering independently.",
+    "philosophy": [
+      "Truth > Hallucination — strict bounds on knowledge retrieval, never guess",
+      "Reliability > Hype — systems must solve expensive bottlenecks, not just demo well",
+      "Build-First — true understanding comes only from shipping real products under live constraints"
+    ],
+    "currently_building": "ArunCore AI Digital Twin — production RAG agent on HuggingFace + Vercel",
+    "open_to": "Freelance AI consulting, technical project collaboration, business automation"
+  }
 }
