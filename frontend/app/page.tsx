@@ -31,7 +31,6 @@ const QUICK_ACTIONS = [
   { label: "Show best projects", prompt: "Show me Arun's best projects with impact." },
   { label: "Explain RAG system", prompt: "Explain Arun's RAG system architecture and what makes it different." },
   { label: "How can Arun help me?", prompt: "How can Arun help my business or project?" },
-  { label: "Break down one project", prompt: "Break down Arun's most complex project in detail." },
 ];
 
 const NAV_ITEMS = [
@@ -209,11 +208,13 @@ export default function ChatPage() {
                 ),
                 code({ inline, className, children, ...props }: any) {
                   return !inline ? (
-                    <pre className="code-block">
-                      <code className={className} {...props}>
-                        {children}
-                      </code>
-                    </pre>
+                    <div className="code-block-wrapper">
+                      <pre className="code-block">
+                        <code className={className} {...props}>
+                          {children}
+                        </code>
+                      </pre>
+                    </div>
                   ) : (
                     <code className="inline-code" {...props}>
                       {children}
@@ -224,7 +225,8 @@ export default function ChatPage() {
                 ol: (props) => <ol className="md-list" {...props} />,
               }}
             >
-              {msg.content.replace(/\n/g, "  \n")}
+              {/* Note: Removed the regex replace \n hack because it breaks normal markdown formatting */}
+              {msg.content}
             </ReactMarkdown>
           </div>
         </div>
@@ -244,7 +246,6 @@ export default function ChatPage() {
     </div>
   );
 
-  // Inline input JSX — defined as a variable, not a component, to prevent remount on each keystroke
   const inputAreaJSX = (
     <div className="input-container">
       {isFirstMessage && (
@@ -639,12 +640,12 @@ export default function ChatPage() {
         }
 
         .chat-limit {
-          max-width: 660px;
+          max-width: 800px;
           margin: 0 auto;
           display: flex;
           flex-direction: column;
-          gap: 24px;
-          padding-bottom: 12px;
+          gap: 28px;
+          padding-bottom: 24px;
         }
 
         .message-row {
@@ -657,11 +658,11 @@ export default function ChatPage() {
         }
 
         .markdown-bubble {
-          max-width: 82%;
-          padding: 14px 18px;
+          max-width: 85%;
+          padding: 18px 24px;
           border-radius: 18px 18px 18px 4px;
-          line-height: 1.7;
-          font-size: 15px;
+          line-height: 1.75;
+          font-size: 16px;
         }
 
         .ai-bubble {
@@ -692,18 +693,17 @@ export default function ChatPage() {
         }
 
         .markdown-bubble blockquote {
-          border-left: 3px solid var(--accent);
-          margin: 12px 0;
-          padding: 8px 14px;
-          background: rgba(99, 102, 241, 0.07);
+          border-left: 4px solid var(--accent);
+          margin: 16px 0;
+          padding: 10px 16px;
+          background: rgba(99, 102, 241, 0.08);
           border-radius: 0 8px 8px 0;
           color: var(--text-m);
-          font-style: normal;
+          font-style: italic;
         }
 
         .markdown-bubble p {
-          margin-bottom: 10px;
-          white-space: pre-wrap;
+          margin-bottom: 16px;
         }
 
         .markdown-bubble p:last-child {
@@ -721,71 +721,80 @@ export default function ChatPage() {
 
         .markdown-bubble ul,
         .markdown-bubble ol {
-          margin: 10px 0 10px 20px;
+          margin: 16px 0 16px 24px;
           padding: 0;
         }
 
         .markdown-bubble li {
-          margin-bottom: 6px;
-          line-height: 1.7;
+          margin-bottom: 8px;
+          line-height: 1.75;
         }
 
         .markdown-bubble li::marker {
           color: var(--accent-light);
         }
 
-        .markdown-bubble h1,
+        .markdown-bubble h1 {
+          color: white;
+          margin: 28px 0 16px;
+          font-weight: 700;
+          font-size: 1.6rem;
+          line-height: 1.3;
+        }
+
         .markdown-bubble h2 {
           color: white;
-          margin: 20px 0 10px;
+          margin: 24px 0 14px;
           font-weight: 700;
-          font-size: 1.1rem;
+          font-size: 1.4rem;
+          line-height: 1.3;
         }
 
         .markdown-bubble h3 {
           color: white;
-          margin: 16px 0 8px;
+          margin: 20px 0 12px;
           font-weight: 600;
-          font-size: 1rem;
+          font-size: 1.2rem;
         }
 
         .markdown-bubble hr {
           border: 0;
           border-top: 1px solid var(--border-light);
+          margin: 24px 0;
+        }
+        
+        .code-block-wrapper {
           margin: 16px 0;
+          border-radius: 10px;
+          border: 1px solid #1e1e2e;
+          background: #0d0d14;
+          overflow: hidden;
         }
 
         .code-block {
-          background: #0d0d14;
-          padding: 14px 16px;
-          border-radius: 10px;
+          padding: 16px 20px;
           overflow-x: auto;
-          font-size: 13px;
-          margin: 12px 0;
-          border: 1px solid #1e1e2e;
+          font-size: 14px;
+          margin: 0;
         }
 
         .inline-code {
           background: #27272a;
-          padding: 2px 6px;
-          border-radius: 5px;
-          font-size: 13px;
+          padding: 3px 6px;
+          border-radius: 6px;
+          font-size: 14.5px;
           color: #a5b4fc;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
         }
 
         .md-list {
-          margin-left: 18px;
-          margin-bottom: 10px;
-        }
-
-        .markdown-bubble br {
-          display: block;
-          margin-bottom: 4px;
+          margin-left: 20px;
+          margin-bottom: 16px;
         }
 
         .table-wrapper {
           overflow-x: auto;
-          margin: 12px 0;
+          margin: 20px 0;
           border: 1px solid var(--border);
           border-radius: 8px;
         }
@@ -793,13 +802,13 @@ export default function ChatPage() {
         table {
           width: 100%;
           border-collapse: collapse;
-          font-size: 13px;
+          font-size: 15px;
         }
 
         th,
         td {
-          padding: 8px 12px;
-          border: 1px solid var(--border);
+          padding: 12px 16px;
+          border: 1px solid var(--border-light);
           text-align: left;
         }
 
@@ -807,6 +816,10 @@ export default function ChatPage() {
           background: var(--bg-c);
           color: white;
           font-weight: 600;
+        }
+        
+        tr:nth-child(even) {
+          background: rgba(255, 255, 255, 0.02);
         }
 
         .quick-actions {
@@ -835,7 +848,7 @@ export default function ChatPage() {
           border: 1px solid var(--border-light);
           border-radius: 999px;
           color: var(--text-m);
-          font-size: 13px;
+          font-size: 14px;
           font-family: inherit;
           font-weight: 500;
           cursor: pointer;
@@ -859,7 +872,7 @@ export default function ChatPage() {
         }
 
         .input-container {
-          max-width: 660px;
+          max-width: 800px;
           margin: 0 auto;
           width: 100%;
         }
@@ -876,15 +889,15 @@ export default function ChatPage() {
           background: #0F172A;
           border: 1px solid var(--border-light);
           border-radius: 14px;
-          padding: 14px 18px;
+          padding: 16px 20px;
           color: var(--text-p);
           resize: none;
           outline: none;
-          font-size: 15px;
+          font-size: 16px;
           font-family: inherit;
           line-height: 1.5;
           transition: border-color 0.2s, box-shadow 0.2s;
-          max-height: 140px;
+          max-height: 160px;
           overflow-y: auto;
         }
 
@@ -898,9 +911,9 @@ export default function ChatPage() {
         }
 
         .send-btn {
-          width: 46px;
-          height: 46px;
-          min-width: 46px;
+          width: 52px;
+          height: 52px;
+          min-width: 52px;
           border-radius: 13px;
           border: none;
           background: linear-gradient(135deg, #6366F1, #8B5CF6);
@@ -963,7 +976,8 @@ export default function ChatPage() {
         }
 
         ::-webkit-scrollbar {
-          width: 4px;
+          width: 6px;
+          height: 6px;
         }
 
         ::-webkit-scrollbar-track {
@@ -972,7 +986,7 @@ export default function ChatPage() {
 
         ::-webkit-scrollbar-thumb {
           background: var(--border-light);
-          border-radius: 4px;
+          border-radius: 6px;
         }
 
         ::-webkit-scrollbar-thumb:hover {

@@ -5,7 +5,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "ArunCore — AI Digital Twin of Arun Yadav",
+  title: "ArunCore — All of Arun's Knowledge in one place",
   description:
     "Talk to ArunCore, the high-precision AI agent built by Arun Yadav. Ask me anything about my projects, skills, and experience in AI Systems Engineering.",
   openGraph: {
