@@ -29,6 +29,8 @@ This repository contains the entirety of the system: the Python backend (LangCha
 
 ## 🏗️ System Architecture
 
+![ArunCore System Design](images/ArunCore_system_design.png)
+
 ### 1. The Knowledge Base (`/data/`)
 The foundational data driving ArunCore is stored statically.
 *   **Static Data (`data/static/`)**: Holds the `public_profile.md` (resume details) and `rules_of_engagement.md` (strict behavioral blueprints for the LLM).
