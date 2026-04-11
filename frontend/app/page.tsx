@@ -85,6 +85,7 @@ export default function ChatPage() {
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [status, setStatus] = useState("Thinking...");
   const [isTypingStr, setIsTypingStr] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [activeNav, setActiveNav] = useState("");
@@ -124,29 +125,56 @@ export default function ChatPage() {
     setTextareaRows(1);
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
     setIsLoading(true);
+    setStatus("Thinking...");
 
     try {
-      await new Promise((r) => setTimeout(r, 300));
-
       const response = await fetch(`${API_URL}/chat`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           session_id: sessionId.current,
           message: userMessage,
         }),
       });
 
-      const data = await response.json().catch(() => ({}));
-      const fullReply = typeof data?.reply === "string" && data.reply.trim() ? data.reply : "Connectivity issue. Try again.";
-      const responseThoughts = Array.isArray(data?.thoughts) ? data.thoughts : [];
+      if (!response.body) throw new Error("No response body");
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+      let finalData: any = null;
+
+      while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        done = doneReading;
+        const chunk = decoder.decode(value, { stream: true });
+        
+        // Handle NDJSON (NewLine Delimited JSON)
+        const lines = chunk.split("\n").filter(l => l.trim());
+        for (const line of lines) {
+          try {
+            const parsed = JSON.parse(line);
+            if (parsed.type === "status") {
+              setStatus(parsed.content);
+            } else if (parsed.type === "final") {
+              finalData = parsed;
+            } else if (parsed.type === "error") {
+              throw new Error(parsed.content);
+            }
+          } catch (e) {
+            console.error("Failed to parse line:", line, e);
+          }
+        }
+      }
+
+      if (!finalData) throw new Error("No final response received");
+
+      const fullReply = finalData.reply;
+      const responseThoughts = Array.isArray(finalData.thoughts) ? finalData.thoughts : [];
 
       setIsLoading(false);
       setIsTypingStr(true);
       
-      // Add assistant message with tools/thoughts initially
       setMessages((prev) => [...prev, { role: "assistant", content: "", thoughts: responseThoughts }]);
 
       const chars = fullReply.split("");
@@ -159,20 +187,16 @@ export default function ChatPage() {
           const newMessages = [...prev];
           const lastIndex = newMessages.length - 1;
           if (newMessages[lastIndex]) {
-            newMessages[lastIndex] = {
-              ...newMessages[lastIndex],
-              content: currentText,
-            };
+            newMessages[lastIndex] = { ...newMessages[lastIndex], content: currentText };
           }
           return newMessages;
         });
-
-        // Add a tiny bit more delay between characters for better readability in video
         await new Promise((r) => setTimeout(r, speed));
       }
 
       setIsTypingStr(false);
-    } catch {
+    } catch (error) {
+      console.error("Chat Error:", error);
       setMessages((prev) => [...prev, { role: "assistant", content: "Connectivity issue. Try again." }]);
       setIsLoading(false);
       setIsTypingStr(false);
@@ -246,10 +270,9 @@ export default function ChatPage() {
 
       {isLoading && (
         <div className="message-row assistant">
-          <div className="typing-indicator">
-            <span />
-            <span />
-            <span />
+          <div className="status-indicator">
+            <div className="spinner"></div>
+            <span>{status}</span>
           </div>
         </div>
       )}
@@ -1012,6 +1035,36 @@ export default function ChatPage() {
             transform: translateY(-7px);
             opacity: 1;
           }
+        }
+
+        .status-indicator {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 12px 18px;
+          background: var(--surface-l2);
+          border: 1px solid var(--border-light);
+          border-radius: 14px;
+          color: var(--accent);
+          font-size: 14px;
+          font-weight: 500;
+          font-family: var(--font-inter);
+          width: fit-content;
+          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .spinner {
+          width: 18px;
+          height: 18px;
+          border: 2px solid rgba(99, 102, 241, 0.2);
+          border-top: 2px solid var(--accent);
+          border-radius: 50%;
+          animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
         }
 
         ::-webkit-scrollbar {

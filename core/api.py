@@ -1,8 +1,11 @@
 import os
+import json
+import asyncio
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
-from typing import Dict
+from fastapi.responses import StreamingResponse
+from typing import Dict, List, Any
 from dotenv import load_dotenv
 
 # Import the core engine components
@@ -26,113 +29,109 @@ except Exception as e:
 
 app = FastAPI(title="ArunCore API", description="Stateful Agentic Backend for Arun Yadav's Digital Twin.")
 
-# Enable CORS for external frontends (like Next.js on Vercel)
+# Enable CORS for external frontends
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with your Vercel URL
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # === SESSION MANAGEMENT ===
-# In-memory store mapping session_id -> RollingMemory
 active_sessions: Dict[str, RollingMemory] = {}
 
 class ChatRequest(BaseModel):
     session_id: str
     message: str
 
-class ChatResponse(BaseModel):
-    reply: str
-    session_id: str
-    thoughts: list[str] = []
-
-@app.post("/chat", response_model=ChatResponse)
+@app.post("/chat")
 async def chat_endpoint(req: ChatRequest):
     if not req.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
         
-    # Get or create the unique memory buffer for this user
     if req.session_id not in active_sessions:
-        print(f"[API] Creating new memory session for {req.session_id}")
-        # Initialize the fast underlying summarizer
         summary_llm = ChatOpenAI(temperature=0.0, model="gpt-4o-mini", api_key=os.getenv("OPENAI_API_KEY"))
         active_sessions[req.session_id] = RollingMemory(summary_llm=summary_llm)
         
     memory = active_sessions[req.session_id]
-    
-    scratchpad = []
-    thoughts = [] # To store names of tools called for UI visibility
-    final_response = None
-    max_iterations = 8
-    iterations = 0
 
-    search_count = 0
-    max_search_limit = 3
+    async def event_generator():
+        scratchpad = []
+        thoughts = []
+        max_iterations = 8
+        iterations = 0
+        search_count = 0
+        max_search_limit = 3
+        final_response = None
 
-    # Executes the Agent-Tool Loop
-    while iterations < max_iterations:
-        messages = prompt.format_messages(
-            running_summary=memory.running_summary,
-            chat_history=memory.get_messages(),
-            input=req.message,
-            agent_scratchpad=scratchpad
-        )
-        
         try:
-            ai_msg = main_llm.invoke(messages)
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"LLM Generation Error: {str(e)}")
-        
-        if ai_msg.tool_calls:
-            scratchpad.append(ai_msg)
-            for tc in ai_msg.tool_calls:
-                tool_name = tc['name']
-                print(f"[API] Session {req.session_id} requested tool: {tool_name}")
+            while iterations < max_iterations:
+                # Initial thinking state
+                if iterations == 0:
+                    yield json.dumps({"type": "status", "content": "Analyzing your request..."}) + "\n"
                 
-                # Add human-friendly labels to thoughts
-                if tool_name == "search_arun_knowledge":
-                    thoughts.append("Searching memory...")
-                elif tool_name == "notify_arun":
-                    thoughts.append("Notifying Arun...")
-                else:
-                    thoughts.append(f"Using {tool_name}...")
+                messages = prompt.format_messages(
+                    running_summary=memory.running_summary,
+                    chat_history=memory.get_messages(),
+                    input=req.message,
+                    agent_scratchpad=scratchpad
+                )
+                
+                # Execute brain step
+                ai_msg = await asyncio.to_thread(main_llm.invoke, messages)
+                
+                if ai_msg.tool_calls:
+                    scratchpad.append(ai_msg)
+                    for tc in ai_msg.tool_calls:
+                        tool_name = tc['name']
+                        
+                        # Set human-friendly status updates
+                        status_msg = "Searching Arun's knowledge..." if tool_name == "search_arun_knowledge" else \
+                                     "Sending notification to Arun..." if tool_name == "notify_arun" else \
+                                     f"Running {tool_name}..."
+                        
+                        yield json.dumps({"type": "status", "content": status_msg}) + "\n"
+                        thoughts.append(status_msg)
 
-                # Check for search budget
-                if tool_name == "search_arun_knowledge":
-                    search_count += 1
-                
-                if search_count > max_search_limit:
-                    tool_result = f"SYSTEM WARNING: Search limit of {max_search_limit} reached for this specific message. DO NOT SEARCH AGAIN. You must now provide a final response based on the search results you already have above."
-                    print(f"[API] Search limit triggered for {req.session_id}")
+                        # Logic execution
+                        if tool_name == "search_arun_knowledge":
+                            search_count += 1
+                        
+                        if search_count > max_search_limit:
+                            tool_result = f"Search limit reached ({max_search_limit}). Finalizing based on existing context."
+                        else:
+                            tool_func = global_tool_map.get(tool_name)
+                            tool_result = await asyncio.to_thread(tool_func.invoke, tc['args'])
+                        
+                        scratchpad.append({
+                            "role": "tool",
+                            "name": tool_name,
+                            "tool_call_id": tc['id'],
+                            "content": str(tool_result)[:2000]
+                        })
+                    iterations += 1
                 else:
-                    tool_func = global_tool_map.get(tool_name)
-                    try:
-                        tool_result = tool_func.invoke(tc['args'])
-                    except Exception as e:
-                        tool_result = f"Error executing tool: {e}"
-                
-                # Report back to the LLM
-                scratchpad.append({
-                    "role": "tool",
-                    "name": tool_name,
-                    "tool_call_id": tc['id'],
-                    "content": str(tool_result)[:2000]
-                })
-            iterations += 1
-        else:
-            # Reached a final text response
-            final_response = ai_msg.content
-            break
-    
-    if not final_response:
-        final_response = "[SYSTEM] I'm sorry, I encountered an internal loop threshold. Let's try chatting again."
-        
-    # Commit interaction to the specific user's memory
-    memory.add_interaction(req.message, final_response)
-    
-    return ChatResponse(reply=final_response, session_id=req.session_id, thoughts=thoughts)
+                    final_response = ai_msg.content
+                    break
+
+            if not final_response:
+                final_response = "I encountered a processing limit. How else can I help?"
+
+            memory.add_interaction(req.message, final_response)
+            
+            # Send the final result packet
+            yield json.dumps({
+                "type": "final",
+                "reply": final_response,
+                "thoughts": thoughts,
+                "session_id": req.session_id
+            }) + "\n"
+
+        except Exception as e:
+            yield json.dumps({"type": "error", "content": str(e)}) + "\n"
+
+    return StreamingResponse(event_generator(), media_type="application/x-ndjson")
 
 @app.get("/health")
 async def health_check():
