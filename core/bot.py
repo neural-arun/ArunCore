@@ -1,12 +1,13 @@
 import asyncio
 import os
+import re
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 # Import the core ArunCore engine
-from core.agent import init_agent, RollingMemory
+from core.agent import init_agent, RollingMemory, maybe_notify_arun
 
 load_dotenv()
 
@@ -69,6 +70,14 @@ def run_agent(chat_id: int, user_message: str) -> str:
     if not final_response:
         final_response = "I ran into an issue internally. Please try again."
 
+    maybe_notify_arun(
+        user_input=user_message,
+        final_response=final_response,
+        scratchpad=scratchpad,
+        tool_map=tool_map,
+        user_metadata={"channel": "telegram", "chat_id": chat_id},
+    )
+
     memory.add_interaction(user_message, final_response)
     return final_response
 
@@ -77,76 +86,52 @@ def run_agent(chat_id: int, user_message: str) -> str:
 
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     welcome = (
-        "👋 Hi! I'm *ArunCore*, the AI digital twin of *Arun Yadav*.\n\n"
+        "Hi! I'm *ArunCore*, the AI digital twin of *Arun Yadav*.\n\n"
         "Ask me anything about his projects, skills, or background in AI engineering. "
-        "I'm here to give you the real picture. 🚀"
+        "I'm here to give you the real picture."
     )
     await update.message.reply_text(welcome, parse_mode="Markdown")
 
 
-import re
-
 def format_for_telegram(text: str) -> str:
     """Converts LLM Markdown into Telegram-safe HTML."""
-    # 1. Escape HTML special characters that aren't tags
     text = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-
-    # 2. Convert Bold: **text** -> <b>text</b>
-    # Use a more robust regex for bolding
     text = re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
-
-    # 3. Convert Headings: ### Heading or ## Heading -> <b>HEADING</b>
     text = re.sub(r'^###?\s+(.+)$', r'\n<b>\1</b>', text, flags=re.MULTILINE)
-
-    # 4. Convert Code blocks: ```code``` -> <pre>code</pre>
     text = re.sub(r'```(?:[a-zA-Z]+)?\n?(.*?)\n?```', r'<pre>\1</pre>', text, flags=re.DOTALL)
-
-    # 5. Convert Inline Code: `code` -> <code>code</code>
     text = re.sub(r'`([^`]+)`', r'<code>\1</code>', text)
+    text = re.sub(r'^[*-]\s+', '• ', text, flags=re.MULTILINE)
 
-    # 6. Convert Bullet points: * item or - item -> • item
-    text = re.sub(r'^[*-]\s+', r'• ', text, flags=re.MULTILINE)
-
-    # 7. Convert Links: [text](url) -> <a href="url">text</a>
-    # Note: We must restore < > for the <a> tag after escaping earlier
     def link_repl(match):
         label, url = match.groups()
         return f'<a href="{url}">{label}</a>'
-    
-    text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', link_repl, text)
 
+    text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', link_repl, text)
     return text.strip()
 
+
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_text = update.message.text
     chat_id = update.effective_chat.id
-    user_message = update.message.text
 
-    # Show "typing..." indicator while generating
-    await context.bot.send_chat_action(chat_id=chat_id, action="typing")
+    await update.message.chat.send_action("typing")
+    reply = await asyncio.to_thread(run_agent, chat_id, user_text)
 
-    reply = await asyncio.to_thread(run_agent, chat_id, user_message)
-    
     html_reply = format_for_telegram(reply)
-    
     try:
         await update.message.reply_text(html_reply, parse_mode="HTML")
     except Exception:
-        # Final fallback to raw text if HTML parsing somehow fails
         await update.message.reply_text(reply)
 
 
-def main():
+if __name__ == "__main__":
     token = os.getenv("TELEGRAM_PUBLIC_BOT_TOKEN")
     if not token:
         raise ValueError("TELEGRAM_PUBLIC_BOT_TOKEN not set in .env")
 
-    app = Application.builder().token(token).build()
-    app.add_handler(CommandHandler("start", start_handler))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
+    application = Application.builder().token(token).build()
+    application.add_handler(CommandHandler("start", start_handler))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler))
 
     print("ArunCore Telegram Bot is running...")
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
-
-
-if __name__ == "__main__":
-    main()
+    application.run_polling()

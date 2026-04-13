@@ -1,133 +1,344 @@
-import os
+import hashlib
+import html
 import json
-import requests
-import uuid
-from typing import List, Dict, Any, Tuple
+import os
+import re
+import time
+import warnings
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+import requests
 from dotenv import load_dotenv
 
-# Langchain core & tools
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.documents import Document
-from langchain_core.tools import tool
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-
-# DB & Retrievers
-from langchain_community.vectorstores import Chroma
-from langchain_community.retrievers import BM25Retriever
 from langchain_cohere import CohereRerank
+from langchain_community.retrievers import BM25Retriever
+from langchain_community.vectorstores import Chroma
+from langchain_core.documents import Document
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.tools import tool
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
-# System configuration
+# =========================================================
+# CONFIG
+# =========================================================
+
 load_dotenv()
+
 if os.getenv("COHERE_API_KEY"):
-    os.environ["CO_API_KEY"] = os.getenv("COHERE_API_KEY")
+    os.environ["CO_API_KEY"] = os.getenv("COHERE_API_KEY", "")
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DB_DIR = BASE_DIR / "db"
 STATIC_DIR = BASE_DIR / "data" / "static"
 
-# ==========================================
-# GLOBAL STATE (Singletons for Tool Access)
-# ==========================================
-# Tools in LangChain must be pure functions, so we need a way to reference the database globally or inject it.
-# We will use global references instantiated during `init_agent()`.
+ALLOWED_NOTIFY_CATEGORIES = {"LEAD", "URGENT", "UNKNOWN_QUESTION"}
+MAX_SEARCH_RESULTS = 5
+MAX_TOOL_ROUNDS = 4
+MAX_HISTORY_MESSAGES = 8
+NOTIFICATION_COOLDOWN_SECONDS = 300
+
+# =========================================================
+# GLOBAL STATE
+# =========================================================
+
 _GLOBAL_VECTORSTORE = None
 _GLOBAL_BM25 = None
 _GLOBAL_COMPRESSOR = None
 
-# ==========================================
+_RECENT_ALERTS: Dict[str, float] = {}
+
+# =========================================================
+# HELPERS
+# =========================================================
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+
+def _safe_truncate(text: str, limit: int = 1500) -> str:
+    text = (text or "").strip()
+    if len(text) <= limit:
+        return text
+    return text[: limit - 3] + "..."
+
+
+def _parse_json_metadata(raw: str) -> Dict[str, Any]:
+    if not raw:
+        return {}
+    try:
+        parsed = json.loads(raw)
+        return parsed if isinstance(parsed, dict) else {"value": parsed}
+    except Exception:
+        return {"raw": raw}
+
+
+def _alert_key(category: str, user_input: str) -> str:
+    digest = hashlib.sha256(
+        f"{category}:{user_input.strip().lower()}".encode("utf-8")
+    ).hexdigest()
+    return digest
+
+
+def _should_send_alert(category: str, user_input: str) -> bool:
+    key = _alert_key(category, user_input)
+    now = time.time()
+    last_seen = _RECENT_ALERTS.get(key)
+    if last_seen and (now - last_seen) < NOTIFICATION_COOLDOWN_SECONDS:
+        return False
+    _RECENT_ALERTS[key] = now
+    return True
+
+
+def _escape_html(text: str) -> str:
+    return html.escape(text or "")
+
+
+def _contains_uncertainty(text: str) -> bool:
+    lowered = (text or "").lower()
+    phrases = [
+        "i don't know",
+        "i do not know",
+        "not sure",
+        "can't confirm",
+        "cannot confirm",
+        "i don't have that information",
+        "no relevant data found",
+        "i'm unsure",
+        "i am unsure",
+        "i cannot answer",
+        "i can’t confirm",
+        "i can’t answer",
+    ]
+    return any(phrase in lowered for phrase in phrases)
+
+
+def _route_user_input(user_input: str) -> Dict[str, Any]:
+    """
+    Lightweight router to bias the system toward tool usage.
+    """
+    text = (user_input or "").strip()
+    lower = text.lower()
+
+    explicit_contact_patterns = [
+        r"\btalk to arun\b",
+        r"\bconnect me to arun\b",
+        r"\bcontact arun\b",
+        r"\bmessage arun\b",
+        r"\bhire arun\b",
+        r"\bcollaborate\b",
+        r"\bpartnership\b",
+        r"\bbusiness\b",
+        r"\blead\b",
+        r"\bwork with you\b",
+    ]
+
+    arun_context_patterns = [
+        r"\baruncore\b",
+        r"\barun\b",
+        r"\byour project\b",
+        r"\byour work\b",
+        r"\byour github\b",
+        r"\bgithub\b",
+        r"\brepository\b",
+        r"\bportfolio\b",
+        r"\barchitecture\b",
+        r"\bknowledge base\b",
+        r"\bbackground\b",
+        r"\bskills\b",
+        r"\bexperience\b",
+    ]
+
+    uncertainty_patterns = [
+        r"\bi don't know\b",
+        r"\bnot sure\b",
+        r"\bcan you explain\b",
+        r"\bwhat does this mean\b",
+        r"\bhelp me understand\b",
+        r"\bunknown\b",
+        r"\bunclear\b",
+        r"\bconfused\b",
+    ]
+
+    if any(re.search(pattern, lower) for pattern in explicit_contact_patterns):
+        category = "URGENT" if any(
+            phrase in lower for phrase in ["talk to arun", "contact arun", "connect me to arun", "message arun"]
+        ) else "LEAD"
+        return {
+            "needs_search": False,
+            "needs_notify": True,
+            "notify_category": category,
+            "reason": "explicit_contact_or_business_intent",
+        }
+
+    if any(re.search(pattern, lower) for pattern in arun_context_patterns):
+        return {
+            "needs_search": True,
+            "needs_notify": False,
+            "notify_category": None,
+            "reason": "arun_related_query",
+        }
+
+    if any(re.search(pattern, lower) for pattern in uncertainty_patterns):
+        return {
+            "needs_search": True,
+            "needs_notify": False,
+            "notify_category": None,
+            "reason": "uncertain_query",
+        }
+
+    return {
+        "needs_search": False,
+        "needs_notify": False,
+        "notify_category": None,
+        "reason": "general_query",
+    }
+
+
+def load_static_context() -> Tuple[str, str]:
+    profile_path = STATIC_DIR / "public_profile.md"
+    rules_path = STATIC_DIR / "rules_of_engagement.md"
+
+    with open(profile_path, "r", encoding="utf-8") as f:
+        profile = f.read()
+    with open(rules_path, "r", encoding="utf-8") as f:
+        rules = f.read()
+
+    return profile, rules
+
+
+# =========================================================
 # TOOLS
-# ==========================================
+# =========================================================
 
 @tool
-def notify_arun(category: str, user_input: str) -> str:
+def notify_arun(category: str, user_input: str, user_metadata_json: str = "") -> str:
     """
-    Sends a real-time Telegram notification to the real Arun.
-    Used for Lead Capture, Direct Contact requests, or Unknown questions.
+    Sends a Telegram alert to Arun.
+
+    Use this when:
+    - The user wants to talk to Arun directly.
+    - The query looks like a lead, collaboration, hiring, or business request.
+    - The system cannot answer confidently and should escalate the question.
+
     Args:
-        category: Choose from 'LEAD', 'URGENT', or 'UNKNOWN_QUESTION'
-        user_input: The user's message or contact details.
+        category: One of 'LEAD', 'URGENT', or 'UNKNOWN_QUESTION'.
+        user_input: The user's message.
+        user_metadata_json: Optional JSON string with extra metadata.
     """
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
-    
-    if not token or not chat_id:
-        return "Notification failed: Telegram credentials not configured in environment."
 
-    text = f"🚨 *ArunCore Alert* 🚨\n\n*Category:* {category}\n*Details:* {user_input}"
+    if not token or not chat_id:
+        return "FAILED: Telegram credentials are missing from the environment."
+
+    category = (category or "UNKNOWN_QUESTION").strip().upper()
+    if category not in ALLOWED_NOTIFY_CATEGORIES:
+        category = "UNKNOWN_QUESTION"
+
+    cleaned_input = _safe_truncate(user_input, 1200)
+    metadata = _parse_json_metadata(user_metadata_json)
+
+    if not _should_send_alert(category, cleaned_input):
+        return f"SKIPPED: duplicate {category} alert suppressed."
+
+    meta_lines = []
+    if metadata:
+        for key, value in metadata.items():
+            meta_lines.append(f"<b>{_escape_html(str(key))}:</b> {_escape_html(str(value))}")
+
+    meta_block = "\n".join(meta_lines)
+    if meta_block:
+        meta_block = f"\n\n<b>Metadata</b>\n{meta_block}"
+
+    text = (
+        f"🚨 <b>ArunCore Alert</b> 🚨\n\n"
+        f"<b>Category:</b> {_escape_html(category)}\n"
+        f"<b>Time:</b> {_escape_html(_utc_now())}\n\n"
+        f"<b>User Input</b>\n{_escape_html(cleaned_input)}"
+        f"{meta_block}"
+    )
+
     url = f"https://api.telegram.org/bot{token}/sendMessage"
-    
+    payload = {
+        "chat_id": chat_id,
+        "text": text,
+        "parse_mode": "HTML",
+        "disable_web_page_preview": True,
+    }
+
     try:
-        payload = {
-            "chat_id": chat_id,
-            "text": text,
-            "parse_mode": "Markdown"
-        }
         response = requests.post(url, json=payload, timeout=10)
         if response.status_code == 200:
-            return "SUCCESS: Arun has been notified and will receive this alert on his phone."
-        else:
-            return f"FAILED: Telegram API returned {response.status_code}"
-    except Exception as e:
+            return "SUCCESS: Arun has been notified."
+        return f"FAILED: Telegram API returned {response.status_code} - {response.text[:300]}"
+    except requests.exceptions.Timeout:
+        return "ERROR: Telegram request timed out."
+    except requests.exceptions.RequestException as e:
         return f"ERROR: Could not send notification. {str(e)}"
+
 
 @tool
 def search_arun_knowledge(search_query: str) -> str:
     """
     Searches Arun's database for technical details, background, projects, and architecture.
-    You MUST prioritize using this tool before answering questions about Arun's history or work.
-    If the response says "No results found", inform the user you do not know.
-    
+    Use this before answering questions about Arun's history, work, GitHub, projects, or internal details.
+
     Args:
-        search_query: A highly descriptive, standalone search query focusing on key technical terms.
+        search_query: A descriptive standalone query focused on key technical terms.
     """
     global _GLOBAL_VECTORSTORE, _GLOBAL_BM25, _GLOBAL_COMPRESSOR
-    
+
     if not _GLOBAL_VECTORSTORE or not _GLOBAL_BM25 or not _GLOBAL_COMPRESSOR:
         return "ERROR: Database retrievers are not initialized."
 
-    # Stage 1: Hybrid Retrieval 
     vec_docs = _GLOBAL_VECTORSTORE.similarity_search(search_query, k=15)
     lex_docs = _GLOBAL_BM25.invoke(search_query)
-    
-    doc_id_map = {}
-    combined = []
-    for d in vec_docs:
-        cid = d.metadata.get('chunk_id', d.page_content[:50])
-        if cid not in doc_id_map:
-            doc_id_map[cid] = True
-            combined.append(d)
-    for d in lex_docs:
-        cid = d.metadata.get('chunk_id', d.page_content[:50])
-        if cid not in doc_id_map:
-            doc_id_map[cid] = True
-            combined.append(d)
-    
-    initial_docs = combined[:20]
 
-    # Stage 2: Reranking
-    if initial_docs:
+    seen = set()
+    combined: List[Document] = []
+
+    for doc in vec_docs + lex_docs:
+        cid = doc.metadata.get("chunk_id") or doc.metadata.get("source") or doc.page_content[:80]
+        if cid not in seen:
+            seen.add(cid)
+            combined.append(doc)
+
+    initial_docs = combined[:20]
+    if not initial_docs:
+        return "DATABASE SEARCH RESULT: No relevant data found for this query."
+
+    try:
         reranked_docs = _GLOBAL_COMPRESSOR.compress_documents(documents=initial_docs, query=search_query)
-    else:
-        reranked_docs = []
+    except Exception as e:
+        reranked_docs = initial_docs[:MAX_SEARCH_RESULTS]
+        if not reranked_docs:
+            return f"DATABASE SEARCH RESULT: No relevant data found. Rerank failed: {e}"
 
     if not reranked_docs:
         return "DATABASE SEARCH RESULT: No relevant data found for this query."
-        
-    context_str = "\n\n---\n\n".join([f"[Source: {doc.metadata.get('source')}]\n{doc.page_content}" for doc in reranked_docs])
-    return f"DATABASE SEARCH RESULT:\n\n{context_str}"
+
+    snippets = []
+    for doc in reranked_docs[:MAX_SEARCH_RESULTS]:
+        source = doc.metadata.get("source", "unknown")
+        chunk_id = doc.metadata.get("chunk_id", "unknown")
+        content = _safe_truncate(doc.page_content, 2000)
+        snippets.append(f"[Source: {source} | chunk: {chunk_id}]\n{content}")
+
+    return "DATABASE SEARCH RESULT:\n\n" + "\n\n---\n\n".join(snippets)
 
 
-# ==========================================
-# MEMORY MANAGER
-# ==========================================
+# =========================================================
+# MEMORY
+# =========================================================
 
 class RollingMemory:
     def __init__(self, summary_llm, max_turns: int = 4):
         self.summary_llm = summary_llm
         self.max_turns = max_turns
-        self.history: List[Any] = []  # Stores Raw Langchain Message Objects
+        self.history: List[Any] = []
         self.running_summary: str = "No prior summary. This is the start of the conversation."
         self.invocation_count = 0
 
@@ -136,230 +347,284 @@ class RollingMemory:
         self.history.append(AIMessage(content=ai_text))
         self.invocation_count += 1
 
-        # Check if we need to summarize (every `max_turns` interactions)
         if self.invocation_count >= self.max_turns:
             self._summarize_and_prune()
 
     def _summarize_and_prune(self):
-        print("\n[SYSTEM] Triggering Background Summarization...")
-        # We summarize everything except the very last 2 interactions (4 messages) to maintain immediate flow
+        print("\n[SYSTEM] Triggering background summarization...")
         messages_to_summarize = self.history[:-4]
-        
+
         if not messages_to_summarize:
             return
 
-        chat_transcript = "\n".join([f"{'User' if isinstance(m, HumanMessage) else 'ArunCore'}: {m.content}" for m in messages_to_summarize])
-        
+        chat_transcript = "\n".join(
+            [f"{'User' if isinstance(m, HumanMessage) else 'ArunCore'}: {m.content}" for m in messages_to_summarize]
+        )
+
         prompt = (
             "You are an internal memory compression engine for ArunCore.\n"
-            "Below is the existing summary of the conversation, followed by the latest messages.\n"
-            "Produce a NEW, concise running summary merging both. Preserve all technical context, names, project mentions, and user facts. Keep it under 5 sentences.\n\n"
+            "Merge the existing summary with the new transcript. Preserve technical context, names, project mentions, user goals, and important decisions. "
+            "Keep it concise and stable. Return no more than 5 sentences.\n\n"
             f"--- EXISTING SUMMARY ---\n{self.running_summary}\n\n"
             f"--- NEW CHAT TO MERGE ---\n{chat_transcript}"
         )
-        
+
         try:
-            res = self.summary_llm.invoke(prompt)
-            self.running_summary = res.content
-            print(f"[SYSTEM] Memory Compressed. New Summary: {self.running_summary[:100]}...\n")
-            
-            # Prune the history to just the recent immediate context
+            res = self.summary_llm.invoke([SystemMessage(content=prompt)])
+            self.running_summary = res.content.strip()
             self.history = self.history[-4:]
             self.invocation_count = len(self.history) // 2
+            print(f"[SYSTEM] Memory compressed. New summary: {self.running_summary[:120]}...")
         except Exception as e:
             print(f"[SYSTEM ERROR] Failed to summarize memory: {e}")
 
     def get_messages(self):
         return self.history
 
-# ==========================================
-# AGENT SETUP
-# ==========================================
 
-def load_static_context():
-    profile_path = STATIC_DIR / "public_profile.md"
-    rules_path = STATIC_DIR / "rules_of_engagement.md"
-    
-    with open(profile_path, "r", encoding="utf-8") as f:
-        profile = f.read()
-    with open(rules_path, "r", encoding="utf-8") as f:
-        rules = f.read()
-        
-    return profile, rules
+# =========================================================
+# AGENT SETUP
+# =========================================================
 
 def init_agent():
     global _GLOBAL_VECTORSTORE, _GLOBAL_BM25, _GLOBAL_COMPRESSOR
-    
-    if not os.getenv("OPENAI_API_KEY") or not os.getenv("GROQ_API_KEY") or not os.getenv("COHERE_API_KEY"):
-        raise ValueError("Missing API Keys.")
 
-    # Init DBs (Global binding for tools)
-    embeddings = OpenAIEmbeddings(model="text-embedding-3-small", api_key=os.getenv("OPENAI_API_KEY"))
-    import warnings; warnings.filterwarnings("ignore", category=DeprecationWarning)
-    
-    # Use standard Chroma safely for now to avoid refactoring issues while changing architectures.
+    openai_key = os.getenv("OPENAI_API_KEY")
+    groq_key = os.getenv("GROQ_API_KEY")
+    cohere_key = os.getenv("COHERE_API_KEY")
+
+    if not openai_key or not groq_key or not cohere_key:
+        raise ValueError("Missing API keys. OPENAI_API_KEY, GROQ_API_KEY, and COHERE_API_KEY are required.")
+
+    warnings.filterwarnings("ignore", category=DeprecationWarning)
+
+    embeddings = OpenAIEmbeddings(model="text-embedding-3-small", api_key=openai_key)
+
     _GLOBAL_VECTORSTORE = Chroma(
         collection_name="aruncore_knowledge",
         embedding_function=embeddings,
-        persist_directory=str(DB_DIR)
+        persist_directory=str(DB_DIR),
     )
-    
+
     all_data = _GLOBAL_VECTORSTORE.get()
     documents = [
-        Document(page_content=text, metadata=metadata) 
-        for text, metadata in zip(all_data['documents'], all_data['metadatas'])
+        Document(page_content=text, metadata=metadata or {})
+        for text, metadata in zip(all_data.get("documents", []), all_data.get("metadatas", []))
+        if text
     ]
-    if not documents: raise ValueError("Vector database is empty. Run 'python core/ingest.py' first.")
-        
+
+    if not documents:
+        raise ValueError("Vector database is empty. Run ingest first.")
+
     _GLOBAL_BM25 = BM25Retriever.from_documents(documents)
     _GLOBAL_BM25.k = 10
-    
-    _GLOBAL_COMPRESSOR = CohereRerank(top_n=5, model="rerank-english-v3.0", cohere_api_key=os.getenv("COHERE_API_KEY"))
 
-    # Init LLMs
-    # 1. Fast LLM for Summarization
-    summary_llm = ChatOpenAI(temperature=0.0, model="gpt-5-nano", api_key=os.getenv("OPENAI_API_KEY"))
-    
-    # 2. Heavy LLM for Tool Calling & Generation
-    tools = [notify_arun, search_arun_knowledge]
-    main_llm = ChatOpenAI(
-        temperature=0.2, 
-        model="gpt-4o-mini", 
-        api_key=os.getenv("OPENAI_API_KEY")
-    ).bind_tools(tools)
-
-    # Build Stateful Prompt
-    profile, rules = load_static_context()
-    
-    system_prompt = (
-        "You are ArunCore — the knowledge system of Arun Yadav. "
-        "You speak in first person ('I', 'My') as Arun. You are precise, honest, and never guess.\n\n"
-
-        "--- IDENTITY PROFILE ---\n"
-        f"{profile}\n\n"
-
-        "--- RULES OF ENGAGEMENT ---\n"
-        f"{rules}\n\n"
-
-        "--- PAST CONVERSATION SUMMARY ---\n"
-        "{running_summary}\n\n"
-
-        "== CORE OPERATING RULES ==\n\n"
-
-        "1. SEARCH FIRST — ALWAYS\n"
-        "   Before answering ANY question about Arun's projects, skills, background, or work, "
-        "call `search_arun_knowledge`. Never answer from memory alone.\n\n"
-
-        "2. URL RULE — ZERO TOLERANCE FOR HALLUCINATION\n"
-        "   NEVER generate, guess, or construct any URL. "
-        "   A URL must appear VERBATIM in the search result context before you use it. "
-        "   If a URL is not in the retrieved context, say: 'I don't have the link for this in my knowledge base.' "
-        "   DO NOT modify, shorten, or reconstruct any URL. Copy it exactly as found, or omit it.\n\n"
-
-        "3. HONESTY ON GAPS\n"
-        "   If retrieved context does not contain the answer, say exactly: "
-        "'I don't have that information in my knowledge base, but I can flag this for Arun to answer.' "
-        "   Never fill gaps with plausible-sounding information.\n\n"
-
-        "4. SEARCH BUDGET\n"
-        "   Max 3 `search_arun_knowledge` calls per user message. "
-        "   If 3 searches return no relevant data, stop searching and give an honest 'I don't know' response.\n\n"
-
-        "5. TOOL HYGIENE\n"
-        "   NEVER output raw XML tags like `<function=...>` in your responses. "
-        "   Use the native tool-calling API only. Any visible XML tool syntax is forbidden.\n\n"
-
-        "6. FORMATTING\n"
-        "   Always respond in clean Markdown. Use bullet points, headings, bold labels, and code blocks. "
-        "   No plain paragraphs when a list fits. Keep responses concise and scannable.\n"
+    _GLOBAL_COMPRESSOR = CohereRerank(
+        top_n=5,
+        model="rerank-english-v3.0",
+        cohere_api_key=cohere_key,
     )
 
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", system_prompt),
-        MessagesPlaceholder(variable_name="chat_history"),
-        ("human", "{input}"),
-        MessagesPlaceholder(variable_name="agent_scratchpad"),
-    ])
+    summary_llm = ChatOpenAI(
+        temperature=0.0,
+        model="gpt-5-nano",
+        api_key=openai_key,
+    )
 
-    # Init Memory
+    tools = [notify_arun, search_arun_knowledge]
+
+    main_llm = ChatOpenAI(
+        temperature=0.15,
+        model="gpt-4o-mini",
+        api_key=openai_key,
+    ).bind_tools(tools)
+
+    profile, rules = load_static_context()
+
+    system_prompt = f"""
+You are ArunCore, the knowledge system for Arun Yadav.
+You speak as Arun in first person. Be honest. Do not guess.
+
+--- IDENTITY PROFILE ---
+{profile}
+
+--- RULES OF ENGAGEMENT ---
+{rules}
+
+--- PAST CONVERSATION SUMMARY ---
+{{running_summary}}
+
+OPERATING POLICY:
+
+1. SEARCH-FIRST POLICY
+- For any question about Arun's projects, skills, background, architecture, GitHub, portfolio, work history, or any stored knowledge, call `search_arun_knowledge` before answering.
+- If the user asks something that might depend on stored facts, use the search tool rather than memory.
+
+2. ESCALATE UNCERTAINTY
+- If search results are weak, empty, or do not support a reliable answer, call `notify_arun` with category `UNKNOWN_QUESTION`.
+- Do not pretend to know.
+- Give the user a direct honest answer after escalation.
+
+3. DIRECT CONTACT / LEAD ESCALATION
+- If the user wants to talk to Arun, contact Arun, hire Arun, collaborate, or discuss a business opportunity, call `notify_arun` immediately.
+- Use category `URGENT` for direct contact intent.
+- Use category `LEAD` for collaboration, hiring, business, partnership, or project opportunities.
+
+4. TOOL BIAS
+- Prefer calling tools over answering from unsupported memory.
+- When in doubt, search first.
+- After a failed search or any explicit uncertainty, escalate.
+- Do not limit tool use artificially unless it would create obvious repetition.
+
+5. OUTPUT STYLE
+- Keep answers concise, direct, and scannable.
+- Use Markdown.
+- If you do not know, say so clearly.
+"""
+
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", system_prompt),
+            MessagesPlaceholder(variable_name="chat_history"),
+            ("human", "{input}"),
+            MessagesPlaceholder(variable_name="agent_scratchpad"),
+        ]
+    )
+
     memory = RollingMemory(summary_llm=summary_llm)
-
     return main_llm, prompt, memory, tools
 
+
+# =========================================================
+# CHAT LOOP
+# =========================================================
+
+def _tool_map(tools):
+    return {tool_obj.name: tool_obj for tool_obj in tools}
+
+
+def _run_pre_escalation(route: Dict[str, Any], user_input: str, tool_map: Dict[str, Any]) -> List[ToolMessage]:
+    messages: List[ToolMessage] = []
+    if route.get("needs_notify"):
+        category = route.get("notify_category") or "UNKNOWN_QUESTION"
+        result = tool_map["notify_arun"].invoke(
+            {
+                "category": category,
+                "user_input": user_input,
+                "user_metadata_json": json.dumps(
+                    {
+                        "reason": route.get("reason", "unknown"),
+                        "timestamp": _utc_now(),
+                    }
+                ),
+            }
+        )
+        messages.append(
+            ToolMessage(
+                content=str(result),
+                tool_call_id=f"pre_notify_{int(time.time())}",
+            )
+        )
+    return messages
+
+
 def chat_interface():
-    print("\n" + "="*50)
-    print("Welcome to ArunCore Stateful Architecture.")
-    print("Type 'exit' to quit. The agent has tools and rolling memory.")
-    print("="*50 + "\n")
-    
+    print("\n" + "=" * 60)
+    print("ArunCore stateful agent")
+    print("Type 'exit' to quit.")
+    print("=" * 60 + "\n")
+
     try:
         main_llm, prompt, memory, tools = init_agent()
     except Exception as e:
         print(f"Startup Error: {e}")
         return
 
-    # Map tools for easy execution
-    tool_map = {t.name: t for t in tools}
+    tool_map = _tool_map(tools)
 
     while True:
         try:
-            user_input = input("You: ")
-            if user_input.lower() in ['exit', 'quit']:
+            user_input = input("You: ").strip()
+            if user_input.lower() in {"exit", "quit"}:
                 break
-            
-            # The agent scratchpad holds intermediate steps (Tool Calls & Answers) within the current turn
-            scratchpad = []
-            final_response = None
-            max_iterations = 3
-            iterations = 0
+            if not user_input:
+                continue
 
-            # Execute Agent Loop (Will keep looping until LLM stops calling tools)
-            while iterations < max_iterations:
+            route = _route_user_input(user_input)
+            scratchpad: List[Any] = []
+            scratchpad.extend(_run_pre_escalation(route, user_input, tool_map))
+
+            final_response: Optional[str] = None
+            used_tools = set()
+
+            for _ in range(MAX_TOOL_ROUNDS):
                 messages = prompt.format_messages(
                     running_summary=memory.running_summary,
                     chat_history=memory.get_messages(),
                     input=user_input,
-                    agent_scratchpad=scratchpad
+                    agent_scratchpad=scratchpad,
                 )
-                
+
                 ai_msg = main_llm.invoke(messages)
-                
+
                 if ai_msg.tool_calls:
                     scratchpad.append(ai_msg)
                     for tc in ai_msg.tool_calls:
-                        print(f"[SYSTEM] Agent requested tool: {tc['name']}({tc['args']})")
-                        tool_func = tool_map.get(tc['name'])
-                        
-                        try:
-                            # Execute tool
-                            tool_result = tool_func.invoke(tc['args'])
-                        except Exception as e:
-                            tool_result = f"Error executing tool: {e}"
-                        
-                        # Tell the AI what happened
-                        scratchpad.append({
-                            "role": "tool",
-                            "name": tc['name'],
-                            "tool_call_id": tc['id'],
-                            "content": str(tool_result)[:2000] # Cap output length just in case
-                        })
-                    iterations += 1
-                else:
-                    # No more tool calls; AI provided final text answer
-                    final_response = ai_msg.content
-                    break
-            
+                        tool_name = tc.get("name")
+                        used_tools.add(tool_name)
+                        print(f"[SYSTEM] Tool call: {tool_name}({tc.get('args')})")
+
+                        tool_func = tool_map.get(tool_name)
+                        if not tool_func:
+                            tool_result = f"ERROR: Unknown tool '{tool_name}'."
+                        else:
+                            try:
+                                tool_result = tool_func.invoke(tc.get("args", {}))
+                            except Exception as e:
+                                tool_result = f"Error executing tool: {e}"
+
+                        scratchpad.append(
+                            ToolMessage(
+                                content=_safe_truncate(str(tool_result), 3000),
+                                tool_call_id=tc.get("id", f"tool_{int(time.time() * 1000)}"),
+                            )
+                        )
+                    continue
+
+                final_response = (ai_msg.content or "").strip()
+                break
+
             if not final_response:
-                final_response = "[SYSTEM] Agent iteration limit reached."
-                
+                final_response = "I do not have enough information to answer that."
+
+            # Safety net: if the model sounds uncertain and did not notify Arun, escalate.
+            if _contains_uncertainty(final_response) and "notify_arun" not in used_tools:
+                try:
+                    notify_result = tool_map["notify_arun"].invoke(
+                        {
+                            "category": "UNKNOWN_QUESTION",
+                            "user_input": user_input,
+                            "user_metadata_json": json.dumps(
+                                {
+                                    "reason": "uncertainty_detected_after_answer",
+                                    "assistant_output": _safe_truncate(final_response, 300),
+                                    "timestamp": _utc_now(),
+                                }
+                            ),
+                        }
+                    )
+                    print(f"[SYSTEM] {notify_result}")
+                except Exception as e:
+                    print(f"[SYSTEM] Failed to auto-notify Arun: {e}")
+
             print(f"\nArunCore: {final_response}\n")
-            print("-"*50)
-            
-            # Commit to memory
+            print("-" * 60)
+
             memory.add_interaction(user_input, final_response)
-            
+
         except Exception as e:
             print(f"Agent Loop Error: {e}")
+
 
 if __name__ == "__main__":
     chat_interface()
