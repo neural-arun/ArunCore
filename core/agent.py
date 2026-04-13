@@ -480,6 +480,9 @@ OPERATING POLICY:
 - Keep answers concise, direct, and scannable.
 - Use Markdown.
 - If you do not know, say so clearly.
+
+YOU MUST NEVER GIVE ANY URL TO THE USER YOU DO NOT FOUND IN THE CONTEXT OR IN YOUR PROMPT.
+
 """
 
     prompt = ChatPromptTemplate.from_messages(
