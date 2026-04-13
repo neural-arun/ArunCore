@@ -9,7 +9,7 @@ from typing import Dict
 from dotenv import load_dotenv
 
 # Import the core engine components
-from core.agent import init_agent, RollingMemory, maybe_notify_arun
+from core.agent import init_agent, RollingMemory
 from langchain_openai import ChatOpenAI
 
 load_dotenv()
