@@ -2,12 +2,15 @@ import os
 import json
 import hashlib
 from pathlib import Path
-from dotenv import load_dotenv
+from typing import Dict, List
 
-import chromadb
+from dotenv import load_dotenv
 from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
-from langchain_text_splitters import MarkdownHeaderTextSplitter, RecursiveCharacterTextSplitter
+from langchain_text_splitters import (
+    MarkdownHeaderTextSplitter,
+    RecursiveCharacterTextSplitter,
+)
 from langchain_core.documents import Document
 
 # Load environment variables from .env file if it exists
@@ -21,26 +24,73 @@ STATE_FILE = DB_DIR / "ingestion_state.json"
 # Folders to parse for the Vector DB
 INGEST_DIRS = ["github", "raw", "linkedin", "static"]
 
+
 def get_file_hash(filepath: Path) -> str:
     with open(filepath, "r", encoding="utf-8") as f:
         return hashlib.md5(f.read().encode("utf-8")).hexdigest()
 
-def load_state() -> dict:
-    if STATE_FILE.exists():
-        with open(STATE_FILE, "r") as f:
-            return json.load(f)
-    return {}
 
-def save_state(state: dict):
+def load_state() -> Dict[str, Dict]:
+    """
+    Returns state in this normalized format:
+    {
+        "data/static/public_profile.md": {
+            "hash": "...",
+            "chunk_ids": ["static_N/A_public_profile_chunk_0", ...]
+        }
+    }
+
+    Supports old state format too:
+    {
+        "data/static/public_profile.md": "old_md5_hash"
+    }
+    """
+    if not STATE_FILE.exists():
+        return {}
+
+    with open(STATE_FILE, "r", encoding="utf-8") as f:
+        raw_state = json.load(f)
+
+    if isinstance(raw_state, dict) and "files" in raw_state and isinstance(raw_state["files"], dict):
+        normalized = {}
+        for rel_path, entry in raw_state["files"].items():
+            if isinstance(entry, dict):
+                normalized[rel_path] = {
+                    "hash": entry.get("hash", ""),
+                    "chunk_ids": entry.get("chunk_ids", []),
+                }
+        return normalized
+
+    normalized = {}
+    if isinstance(raw_state, dict):
+        for rel_path, value in raw_state.items():
+            if isinstance(value, str):
+                normalized[rel_path] = {
+                    "hash": value,
+                    "chunk_ids": [],
+                }
+            elif isinstance(value, dict):
+                normalized[rel_path] = {
+                    "hash": value.get("hash", ""),
+                    "chunk_ids": value.get("chunk_ids", []),
+                }
+    return normalized
+
+
+def save_state(state: Dict[str, Dict]) -> None:
     os.makedirs(DB_DIR, exist_ok=True)
-    with open(STATE_FILE, "w") as f:
-        json.dump(state, f, indent=4)
+    payload = {
+        "version": 2,
+        "files": state,
+    }
+    with open(STATE_FILE, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=4)
 
-def process_markdown_file(filepath: Path, base_folder: str, rel_path: str):
+
+def process_markdown_file(filepath: Path, base_folder: str, rel_path: str) -> List[Document]:
     with open(filepath, "r", encoding="utf-8") as f:
         text = f.read()
 
-    # Split markdown by headers to keep semantic sections intact
     headers_to_split_on = [
         ("#", "Header 1"),
         ("##", "Header 2"),
@@ -49,14 +99,11 @@ def process_markdown_file(filepath: Path, base_folder: str, rel_path: str):
     markdown_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
     md_header_splits = markdown_splitter.split_text(text)
 
-    # Further split sections that might be too long to fit in embedding models
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1200, chunk_overlap=150)
     splits = text_splitter.split_documents(md_header_splits)
 
-    # Base ID mechanism (e.g. raw_personal_background)
     safe_name = filepath.stem.replace(" ", "_").replace(".", "_")
-    
-    # Extract project name if inside github folder
+
     project_name = "N/A"
     parts = list(filepath.relative_to(DATA_DIR).parts)
     if "github" in parts and len(parts) > 1:
@@ -66,18 +113,15 @@ def process_markdown_file(filepath: Path, base_folder: str, rel_path: str):
         split.metadata["source"] = rel_path
         split.metadata["folder"] = base_folder
         split.metadata["project"] = project_name
-        
-        # Deterministic chunk ID
-        chunk_id = f"{base_folder}_{project_name}_{safe_name}_chunk_{i}"
-        split.metadata["chunk_id"] = chunk_id
-        
+        split.metadata["chunk_id"] = f"{base_folder}_{project_name}_{safe_name}_chunk_{i}"
+
     return splits
 
-def process_json_file(filepath: Path, base_folder: str, rel_path: str):
-    # For small metadata or code_summaries files, load as a single chunk
+
+def process_json_file(filepath: Path, base_folder: str, rel_path: str) -> List[Document]:
     with open(filepath, "r", encoding="utf-8") as f:
         content = f.read()
-    
+
     project_name = "N/A"
     parts = list(filepath.relative_to(DATA_DIR).parts)
     if "github" in parts and len(parts) > 1:
@@ -85,17 +129,26 @@ def process_json_file(filepath: Path, base_folder: str, rel_path: str):
 
     safe_name = filepath.stem.replace(" ", "_").replace(".", "_")
     chunk_id = f"{base_folder}_{project_name}_{safe_name}_chunk_0"
-    
+
     doc = Document(
         page_content=content,
         metadata={
             "source": rel_path,
             "folder": base_folder,
             "project": project_name,
-            "chunk_id": chunk_id
-        }
+            "chunk_id": chunk_id,
+        },
     )
     return [doc]
+
+
+def process_file(filepath: Path, base_folder: str, rel_path: str) -> List[Document]:
+    if filepath.suffix == ".md":
+        return process_markdown_file(filepath, base_folder, rel_path)
+    if filepath.suffix == ".json":
+        return process_json_file(filepath, base_folder, rel_path)
+    return []
+
 
 def main():
     if not os.getenv("OPENAI_API_KEY"):
@@ -105,62 +158,95 @@ def main():
 
     print("Initializing ChromaDB and OpenAI Embeddings...")
     embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
-    
+
     vectorstore = Chroma(
         collection_name="aruncore_knowledge",
         embedding_function=embeddings,
-        persist_directory=str(DB_DIR)
+        persist_directory=str(DB_DIR),
     )
 
-    state = load_state()
-    new_state = {}
-    
-    docs_to_embed = []
-    ids_to_embed = []
-    
-    # 1. Gather & Process Files
-    # Auto-scan all subdirectories in the data folder
-    all_folders = [f.name for f in DATA_DIR.iterdir() if f.is_dir()]
-    
-    for folder in all_folders:
+    previous_state = load_state()
+    new_state: Dict[str, Dict] = {}
+
+    docs_to_upsert: List[Document] = []
+    ids_to_upsert: List[str] = []
+    stale_ids_to_delete = set()
+    current_rel_paths = set()
+
+    folders_to_scan = [folder for folder in INGEST_DIRS if (DATA_DIR / folder).is_dir()]
+
+    for folder in folders_to_scan:
         target_dir = DATA_DIR / folder
-            
+
         for ext in ["*.md", "*.json"]:
             for filepath in target_dir.rglob(ext):
-                # Extra safety: Ensure we don't accidentally embed any test_set data
                 if "test_set" in filepath.parts:
                     continue
-                    
-                file_hash = get_file_hash(filepath)
-                rel_path = filepath.relative_to(BASE_DIR).as_posix()
-                
-                new_state[rel_path] = file_hash
-                
-                if rel_path in state and state[rel_path] == file_hash:
-                    # Hash matches, skip file
-                    continue
-                
-                print(f"File changed/new -> Processing: {rel_path}")
-                
-                splits = []
-                if filepath.suffix == '.md':
-                    splits = process_markdown_file(filepath, folder, rel_path)
-                elif filepath.suffix == '.json':
-                    splits = process_json_file(filepath, folder, rel_path)
-                    
-                docs_to_embed.extend(splits)
-                ids_to_embed.extend([s.metadata["chunk_id"] for s in splits])
 
-    # 2. Upsert to DB
-    if docs_to_embed:
-        print(f"\nAdding {len(docs_to_embed)} new/modified chunks to Vector DB...")
-        vectorstore.add_documents(documents=docs_to_embed, ids=ids_to_embed)
-        print("Database updated.")
+                rel_path = filepath.relative_to(BASE_DIR).as_posix()
+                current_rel_paths.add(rel_path)
+
+                file_hash = get_file_hash(filepath)
+                previous_entry = previous_state.get(rel_path, {})
+                previous_hash = previous_entry.get("hash")
+                previous_chunk_ids = previous_entry.get("chunk_ids", [])
+
+                is_unchanged = (
+                    previous_hash == file_hash
+                    and isinstance(previous_chunk_ids, list)
+                    and len(previous_chunk_ids) > 0
+                )
+
+                if is_unchanged:
+                    new_state[rel_path] = {
+                        "hash": previous_hash,
+                        "chunk_ids": previous_chunk_ids,
+                    }
+                    continue
+
+                print(f"File changed/new -> Processing: {rel_path}")
+
+                splits = process_file(filepath, folder, rel_path)
+                new_chunk_ids = [doc.metadata["chunk_id"] for doc in splits]
+
+                docs_to_upsert.extend(splits)
+                ids_to_upsert.extend(new_chunk_ids)
+
+                old_ids_set = set(previous_chunk_ids)
+                new_ids_set = set(new_chunk_ids)
+
+                stale_ids_to_delete.update(old_ids_set - new_ids_set)
+
+                new_state[rel_path] = {
+                    "hash": file_hash,
+                    "chunk_ids": new_chunk_ids,
+                }
+
+    deleted_files = set(previous_state.keys()) - current_rel_paths
+    for rel_path in deleted_files:
+        old_chunk_ids = previous_state.get(rel_path, {}).get("chunk_ids", [])
+        if old_chunk_ids:
+            print(f"File deleted -> Removing old chunks: {rel_path}")
+            stale_ids_to_delete.update(old_chunk_ids)
+
+    if docs_to_upsert:
+        print(f"\nUpserting {len(docs_to_upsert)} new/modified chunks into Vector DB...")
+        vectorstore.add_documents(documents=docs_to_upsert, ids=ids_to_upsert)
+        print("Upsert complete.")
     else:
-        print("\nNo files have changed. Database is 100% up to date.")
-        
+        print("\nNo new or modified files to upsert.")
+
+    if stale_ids_to_delete:
+        stale_ids_list = sorted(stale_ids_to_delete)
+        print(f"Deleting {len(stale_ids_list)} stale chunks from Vector DB...")
+        vectorstore.delete(ids=stale_ids_list)
+        print("Stale chunk cleanup complete.")
+    else:
+        print("No stale chunks to delete.")
+
     save_state(new_state)
     print("Ingestion sequence complete.")
+
 
 if __name__ == "__main__":
     main()

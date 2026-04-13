@@ -1,46 +1,439 @@
 {
-    "data/github/README.md": "89c7f754b14c5d219a9b0d3f83865c15",
-    "data/github/Agentic_AI_Projects/master_portfolio_summary.md": "87e9185138c1551c6bfb898ecf5298c2",
-    "data/github/Agentic_AI_Projects/readme.md": "918b806d490d03a9ba736276b9dc16b2",
-    "data/github/arun_core_digital_twin/architecture.md": "5732cadc282d151d0395249c21315a98",
-    "data/github/arun_core_digital_twin/decisions.md": "495efcb2b7e5690c7140dfa8024b2ed6",
-    "data/github/arun_core_digital_twin/features.md": "d4574415a1aeadf5961714bd1f8d0468",
-    "data/github/arun_core_digital_twin/overview.md": "98eb3e2fd823f7452ae832f5b4e36c2b",
-    "data/github/arun_core_digital_twin/technical_specs.md": "e3299b98bbf2b394e000e58286f5a401",
-    "data/github/legal_RAG_system/architecture.md": "aafdd404cf78145119c0269230ef8887",
-    "data/github/legal_RAG_system/decisions.md": "d0852714fccd33f1eb903c432395aa3e",
-    "data/github/legal_RAG_system/readme.md": "fd5f6db10343461518f8fcf83de60276",
-    "data/github/neural_arun_labs/readme.md": "3be3dd7db74bebc315280cf51c03dc3d",
-    "data/github/personal_ai_agent/architecture.md": "e498a8f0c032ea6fe403c5c0e8a4492b",
-    "data/github/personal_ai_agent/decisions.md": "cdc61a7ea2ab30400cecfc56cb42d80a",
-    "data/github/personal_ai_agent/readme.md": "2d999d1ca238b9082cc72526ae9f982d",
-    "data/github/real_state_listing_scraper/architecture.md": "63d3fbcde554a82fe835220639c1cd69",
-    "data/github/real_state_listing_scraper/decisions.md": "41ec5396571ec030369f9bec12d85698",
-    "data/github/real_state_listing_scraper/readme.md": "88dc293e76a03096260cfa51a28c9c77",
-    "data/github/result_anomaly/architecture.md": "763016e768451bfeefc27f5c0f68fc03",
-    "data/github/result_anomaly/decisions.md": "f39116fe5d0cba4b3b64bee6be4bbdb2",
-    "data/github/result_anomaly/readme.md": "a191fb0c26cb1b1d35742b70cfad2e24",
-    "data/github/web_wizard/readme.md": "eaeca5ec5d83c9d71a079d1ffbae5282",
-    "data/github/Agentic_AI_Projects/metadata.json": "1e5f4542e9d0b67dadbed557781c3fb0",
-    "data/github/arun_core_digital_twin/code_summaries.json": "f88572b18b344f6ff425a7b16d6b173f",
-    "data/github/arun_core_digital_twin/metadata.json": "fd7936435daf0f372b700db51673fc56",
-    "data/github/legal_RAG_system/code_summaries.json": "876c9e9d15a117c843f5571c941860cf",
-    "data/github/legal_RAG_system/metadata.json": "7be5d67aaed773aae6cd94c05c3e7e7d",
-    "data/github/neural_arun_labs/metadata.json": "b37040f28da2124401df3226e5ab1363",
-    "data/github/personal_ai_agent/code_summaries.json": "952bb5f9e5a41c3090448a89b158593f",
-    "data/github/personal_ai_agent/metadata.json": "7f880ea39dce320d40fa3aacae2aeef3",
-    "data/github/real_state_listing_scraper/code_summaries.json": "b0c222d07d03c9858ac5b8364171b13f",
-    "data/github/real_state_listing_scraper/metadata.json": "cbdddb89621470ab0763a0960ae9ee4f",
-    "data/github/result_anomaly/code_summaries.json": "f37f99175974b87573a5c5941db3bab6",
-    "data/github/result_anomaly/metadata.json": "ac8139723521dc9147dc1b2e3bc78ab1",
-    "data/github/web_wizard/metadata.json": "d74ddd743029eb878fab15cde86abbdb",
-    "data/linkedin/posts.md": "5a926790ca5abc91619d0a39eb98190d",
-    "data/linkedin/profile_summary.md": "759477fa54a35047731ac431d1bd8d12",
-    "data/raw/all_projects_summary.md": "536a627c31e92f4dfd18a3947b5493c2",
-    "data/raw/personal_background.md": "fac2876e9ae20b86614e51f777bc2ec2",
-    "data/raw/README.md": "8412054e97ec51136b955e6efa823819",
-    "data/raw/metadata.json": "beb1fb2c5bfb6f8c2786055fc7d6f8ce",
-    "data/static/public_profile.md": "0777d7e5e10fa28dab5ea79611026229",
-    "data/static/README.md": "e71befe905c6348f2d497aee35f37f81",
-    "data/static/rules_of_engagement.md": "400606c2e22098c229f26154b3c7c4b0"
+    "version": 2,
+    "files": {
+        "data/github/README.md": {
+            "hash": "89c7f754b14c5d219a9b0d3f83865c15",
+            "chunk_ids": [
+                "github_README.md_README_chunk_0",
+                "github_README.md_README_chunk_1",
+                "github_README.md_README_chunk_2",
+                "github_README.md_README_chunk_3",
+                "github_README.md_README_chunk_4",
+                "github_README.md_README_chunk_5"
+            ]
+        },
+        "data/github/Agentic_AI_Projects/master_portfolio_summary.md": {
+            "hash": "87e9185138c1551c6bfb898ecf5298c2",
+            "chunk_ids": [
+                "github_Agentic_AI_Projects_master_portfolio_summary_chunk_0",
+                "github_Agentic_AI_Projects_master_portfolio_summary_chunk_1",
+                "github_Agentic_AI_Projects_master_portfolio_summary_chunk_2",
+                "github_Agentic_AI_Projects_master_portfolio_summary_chunk_3",
+                "github_Agentic_AI_Projects_master_portfolio_summary_chunk_4",
+                "github_Agentic_AI_Projects_master_portfolio_summary_chunk_5",
+                "github_Agentic_AI_Projects_master_portfolio_summary_chunk_6"
+            ]
+        },
+        "data/github/Agentic_AI_Projects/readme.md": {
+            "hash": "918b806d490d03a9ba736276b9dc16b2",
+            "chunk_ids": [
+                "github_Agentic_AI_Projects_readme_chunk_0",
+                "github_Agentic_AI_Projects_readme_chunk_1",
+                "github_Agentic_AI_Projects_readme_chunk_2",
+                "github_Agentic_AI_Projects_readme_chunk_3",
+                "github_Agentic_AI_Projects_readme_chunk_4",
+                "github_Agentic_AI_Projects_readme_chunk_5"
+            ]
+        },
+        "data/github/arun_core_digital_twin/architecture.md": {
+            "hash": "5732cadc282d151d0395249c21315a98",
+            "chunk_ids": [
+                "github_arun_core_digital_twin_architecture_chunk_0",
+                "github_arun_core_digital_twin_architecture_chunk_1",
+                "github_arun_core_digital_twin_architecture_chunk_2",
+                "github_arun_core_digital_twin_architecture_chunk_3",
+                "github_arun_core_digital_twin_architecture_chunk_4",
+                "github_arun_core_digital_twin_architecture_chunk_5",
+                "github_arun_core_digital_twin_architecture_chunk_6"
+            ]
+        },
+        "data/github/arun_core_digital_twin/decisions.md": {
+            "hash": "495efcb2b7e5690c7140dfa8024b2ed6",
+            "chunk_ids": [
+                "github_arun_core_digital_twin_decisions_chunk_0",
+                "github_arun_core_digital_twin_decisions_chunk_1",
+                "github_arun_core_digital_twin_decisions_chunk_2",
+                "github_arun_core_digital_twin_decisions_chunk_3",
+                "github_arun_core_digital_twin_decisions_chunk_4",
+                "github_arun_core_digital_twin_decisions_chunk_5",
+                "github_arun_core_digital_twin_decisions_chunk_6"
+            ]
+        },
+        "data/github/arun_core_digital_twin/features.md": {
+            "hash": "d4574415a1aeadf5961714bd1f8d0468",
+            "chunk_ids": [
+                "github_arun_core_digital_twin_features_chunk_0",
+                "github_arun_core_digital_twin_features_chunk_1",
+                "github_arun_core_digital_twin_features_chunk_2",
+                "github_arun_core_digital_twin_features_chunk_3",
+                "github_arun_core_digital_twin_features_chunk_4",
+                "github_arun_core_digital_twin_features_chunk_5",
+                "github_arun_core_digital_twin_features_chunk_6"
+            ]
+        },
+        "data/github/arun_core_digital_twin/overview.md": {
+            "hash": "98eb3e2fd823f7452ae832f5b4e36c2b",
+            "chunk_ids": [
+                "github_arun_core_digital_twin_overview_chunk_0",
+                "github_arun_core_digital_twin_overview_chunk_1",
+                "github_arun_core_digital_twin_overview_chunk_2",
+                "github_arun_core_digital_twin_overview_chunk_3",
+                "github_arun_core_digital_twin_overview_chunk_4",
+                "github_arun_core_digital_twin_overview_chunk_5"
+            ]
+        },
+        "data/github/arun_core_digital_twin/technical_specs.md": {
+            "hash": "e3299b98bbf2b394e000e58286f5a401",
+            "chunk_ids": [
+                "github_arun_core_digital_twin_technical_specs_chunk_0",
+                "github_arun_core_digital_twin_technical_specs_chunk_1",
+                "github_arun_core_digital_twin_technical_specs_chunk_2",
+                "github_arun_core_digital_twin_technical_specs_chunk_3",
+                "github_arun_core_digital_twin_technical_specs_chunk_4",
+                "github_arun_core_digital_twin_technical_specs_chunk_5"
+            ]
+        },
+        "data/github/legal_RAG_system/architecture.md": {
+            "hash": "aafdd404cf78145119c0269230ef8887",
+            "chunk_ids": [
+                "github_legal_RAG_system_architecture_chunk_0",
+                "github_legal_RAG_system_architecture_chunk_1",
+                "github_legal_RAG_system_architecture_chunk_2",
+                "github_legal_RAG_system_architecture_chunk_3",
+                "github_legal_RAG_system_architecture_chunk_4",
+                "github_legal_RAG_system_architecture_chunk_5",
+                "github_legal_RAG_system_architecture_chunk_6"
+            ]
+        },
+        "data/github/legal_RAG_system/decisions.md": {
+            "hash": "d0852714fccd33f1eb903c432395aa3e",
+            "chunk_ids": [
+                "github_legal_RAG_system_decisions_chunk_0",
+                "github_legal_RAG_system_decisions_chunk_1",
+                "github_legal_RAG_system_decisions_chunk_2",
+                "github_legal_RAG_system_decisions_chunk_3",
+                "github_legal_RAG_system_decisions_chunk_4",
+                "github_legal_RAG_system_decisions_chunk_5",
+                "github_legal_RAG_system_decisions_chunk_6"
+            ]
+        },
+        "data/github/legal_RAG_system/readme.md": {
+            "hash": "fd5f6db10343461518f8fcf83de60276",
+            "chunk_ids": [
+                "github_legal_RAG_system_readme_chunk_0",
+                "github_legal_RAG_system_readme_chunk_1",
+                "github_legal_RAG_system_readme_chunk_2",
+                "github_legal_RAG_system_readme_chunk_3"
+            ]
+        },
+        "data/github/neural_arun_labs/readme.md": {
+            "hash": "3be3dd7db74bebc315280cf51c03dc3d",
+            "chunk_ids": [
+                "github_neural_arun_labs_readme_chunk_0",
+                "github_neural_arun_labs_readme_chunk_1",
+                "github_neural_arun_labs_readme_chunk_2",
+                "github_neural_arun_labs_readme_chunk_3"
+            ]
+        },
+        "data/github/personal_ai_agent/architecture.md": {
+            "hash": "e498a8f0c032ea6fe403c5c0e8a4492b",
+            "chunk_ids": [
+                "github_personal_ai_agent_architecture_chunk_0",
+                "github_personal_ai_agent_architecture_chunk_1",
+                "github_personal_ai_agent_architecture_chunk_2",
+                "github_personal_ai_agent_architecture_chunk_3",
+                "github_personal_ai_agent_architecture_chunk_4",
+                "github_personal_ai_agent_architecture_chunk_5",
+                "github_personal_ai_agent_architecture_chunk_6",
+                "github_personal_ai_agent_architecture_chunk_7"
+            ]
+        },
+        "data/github/personal_ai_agent/decisions.md": {
+            "hash": "cdc61a7ea2ab30400cecfc56cb42d80a",
+            "chunk_ids": [
+                "github_personal_ai_agent_decisions_chunk_0",
+                "github_personal_ai_agent_decisions_chunk_1",
+                "github_personal_ai_agent_decisions_chunk_2",
+                "github_personal_ai_agent_decisions_chunk_3",
+                "github_personal_ai_agent_decisions_chunk_4",
+                "github_personal_ai_agent_decisions_chunk_5"
+            ]
+        },
+        "data/github/personal_ai_agent/readme.md": {
+            "hash": "2d999d1ca238b9082cc72526ae9f982d",
+            "chunk_ids": [
+                "github_personal_ai_agent_readme_chunk_0",
+                "github_personal_ai_agent_readme_chunk_1",
+                "github_personal_ai_agent_readme_chunk_2",
+                "github_personal_ai_agent_readme_chunk_3"
+            ]
+        },
+        "data/github/real_state_listing_scraper/architecture.md": {
+            "hash": "63d3fbcde554a82fe835220639c1cd69",
+            "chunk_ids": [
+                "github_real_state_listing_scraper_architecture_chunk_0",
+                "github_real_state_listing_scraper_architecture_chunk_1",
+                "github_real_state_listing_scraper_architecture_chunk_2",
+                "github_real_state_listing_scraper_architecture_chunk_3",
+                "github_real_state_listing_scraper_architecture_chunk_4"
+            ]
+        },
+        "data/github/real_state_listing_scraper/decisions.md": {
+            "hash": "41ec5396571ec030369f9bec12d85698",
+            "chunk_ids": [
+                "github_real_state_listing_scraper_decisions_chunk_0",
+                "github_real_state_listing_scraper_decisions_chunk_1",
+                "github_real_state_listing_scraper_decisions_chunk_2",
+                "github_real_state_listing_scraper_decisions_chunk_3",
+                "github_real_state_listing_scraper_decisions_chunk_4",
+                "github_real_state_listing_scraper_decisions_chunk_5"
+            ]
+        },
+        "data/github/real_state_listing_scraper/readme.md": {
+            "hash": "88dc293e76a03096260cfa51a28c9c77",
+            "chunk_ids": [
+                "github_real_state_listing_scraper_readme_chunk_0",
+                "github_real_state_listing_scraper_readme_chunk_1",
+                "github_real_state_listing_scraper_readme_chunk_2",
+                "github_real_state_listing_scraper_readme_chunk_3"
+            ]
+        },
+        "data/github/result_anomaly/architecture.md": {
+            "hash": "763016e768451bfeefc27f5c0f68fc03",
+            "chunk_ids": [
+                "github_result_anomaly_architecture_chunk_0",
+                "github_result_anomaly_architecture_chunk_1",
+                "github_result_anomaly_architecture_chunk_2",
+                "github_result_anomaly_architecture_chunk_3",
+                "github_result_anomaly_architecture_chunk_4"
+            ]
+        },
+        "data/github/result_anomaly/decisions.md": {
+            "hash": "f39116fe5d0cba4b3b64bee6be4bbdb2",
+            "chunk_ids": [
+                "github_result_anomaly_decisions_chunk_0",
+                "github_result_anomaly_decisions_chunk_1",
+                "github_result_anomaly_decisions_chunk_2",
+                "github_result_anomaly_decisions_chunk_3",
+                "github_result_anomaly_decisions_chunk_4"
+            ]
+        },
+        "data/github/result_anomaly/readme.md": {
+            "hash": "a191fb0c26cb1b1d35742b70cfad2e24",
+            "chunk_ids": [
+                "github_result_anomaly_readme_chunk_0",
+                "github_result_anomaly_readme_chunk_1",
+                "github_result_anomaly_readme_chunk_2",
+                "github_result_anomaly_readme_chunk_3"
+            ]
+        },
+        "data/github/web_wizard/readme.md": {
+            "hash": "eaeca5ec5d83c9d71a079d1ffbae5282",
+            "chunk_ids": [
+                "github_web_wizard_readme_chunk_0",
+                "github_web_wizard_readme_chunk_1",
+                "github_web_wizard_readme_chunk_2",
+                "github_web_wizard_readme_chunk_3",
+                "github_web_wizard_readme_chunk_4"
+            ]
+        },
+        "data/github/Agentic_AI_Projects/metadata.json": {
+            "hash": "1e5f4542e9d0b67dadbed557781c3fb0",
+            "chunk_ids": [
+                "github_Agentic_AI_Projects_metadata_chunk_0"
+            ]
+        },
+        "data/github/arun_core_digital_twin/code_summaries.json": {
+            "hash": "f88572b18b344f6ff425a7b16d6b173f",
+            "chunk_ids": [
+                "github_arun_core_digital_twin_code_summaries_chunk_0"
+            ]
+        },
+        "data/github/arun_core_digital_twin/metadata.json": {
+            "hash": "fd7936435daf0f372b700db51673fc56",
+            "chunk_ids": [
+                "github_arun_core_digital_twin_metadata_chunk_0"
+            ]
+        },
+        "data/github/legal_RAG_system/code_summaries.json": {
+            "hash": "876c9e9d15a117c843f5571c941860cf",
+            "chunk_ids": [
+                "github_legal_RAG_system_code_summaries_chunk_0"
+            ]
+        },
+        "data/github/legal_RAG_system/metadata.json": {
+            "hash": "7be5d67aaed773aae6cd94c05c3e7e7d",
+            "chunk_ids": [
+                "github_legal_RAG_system_metadata_chunk_0"
+            ]
+        },
+        "data/github/neural_arun_labs/metadata.json": {
+            "hash": "b37040f28da2124401df3226e5ab1363",
+            "chunk_ids": [
+                "github_neural_arun_labs_metadata_chunk_0"
+            ]
+        },
+        "data/github/personal_ai_agent/code_summaries.json": {
+            "hash": "952bb5f9e5a41c3090448a89b158593f",
+            "chunk_ids": [
+                "github_personal_ai_agent_code_summaries_chunk_0"
+            ]
+        },
+        "data/github/personal_ai_agent/metadata.json": {
+            "hash": "7f880ea39dce320d40fa3aacae2aeef3",
+            "chunk_ids": [
+                "github_personal_ai_agent_metadata_chunk_0"
+            ]
+        },
+        "data/github/real_state_listing_scraper/code_summaries.json": {
+            "hash": "b0c222d07d03c9858ac5b8364171b13f",
+            "chunk_ids": [
+                "github_real_state_listing_scraper_code_summaries_chunk_0"
+            ]
+        },
+        "data/github/real_state_listing_scraper/metadata.json": {
+            "hash": "cbdddb89621470ab0763a0960ae9ee4f",
+            "chunk_ids": [
+                "github_real_state_listing_scraper_metadata_chunk_0"
+            ]
+        },
+        "data/github/result_anomaly/code_summaries.json": {
+            "hash": "f37f99175974b87573a5c5941db3bab6",
+            "chunk_ids": [
+                "github_result_anomaly_code_summaries_chunk_0"
+            ]
+        },
+        "data/github/result_anomaly/metadata.json": {
+            "hash": "ac8139723521dc9147dc1b2e3bc78ab1",
+            "chunk_ids": [
+                "github_result_anomaly_metadata_chunk_0"
+            ]
+        },
+        "data/github/web_wizard/metadata.json": {
+            "hash": "d74ddd743029eb878fab15cde86abbdb",
+            "chunk_ids": [
+                "github_web_wizard_metadata_chunk_0"
+            ]
+        },
+        "data/raw/all_projects_summary.md": {
+            "hash": "536a627c31e92f4dfd18a3947b5493c2",
+            "chunk_ids": [
+                "raw_N/A_all_projects_summary_chunk_0",
+                "raw_N/A_all_projects_summary_chunk_1",
+                "raw_N/A_all_projects_summary_chunk_2",
+                "raw_N/A_all_projects_summary_chunk_3",
+                "raw_N/A_all_projects_summary_chunk_4",
+                "raw_N/A_all_projects_summary_chunk_5",
+                "raw_N/A_all_projects_summary_chunk_6",
+                "raw_N/A_all_projects_summary_chunk_7",
+                "raw_N/A_all_projects_summary_chunk_8",
+                "raw_N/A_all_projects_summary_chunk_9",
+                "raw_N/A_all_projects_summary_chunk_10",
+                "raw_N/A_all_projects_summary_chunk_11",
+                "raw_N/A_all_projects_summary_chunk_12",
+                "raw_N/A_all_projects_summary_chunk_13",
+                "raw_N/A_all_projects_summary_chunk_14",
+                "raw_N/A_all_projects_summary_chunk_15",
+                "raw_N/A_all_projects_summary_chunk_16",
+                "raw_N/A_all_projects_summary_chunk_17",
+                "raw_N/A_all_projects_summary_chunk_18",
+                "raw_N/A_all_projects_summary_chunk_19",
+                "raw_N/A_all_projects_summary_chunk_20",
+                "raw_N/A_all_projects_summary_chunk_21",
+                "raw_N/A_all_projects_summary_chunk_22",
+                "raw_N/A_all_projects_summary_chunk_23",
+                "raw_N/A_all_projects_summary_chunk_24",
+                "raw_N/A_all_projects_summary_chunk_25",
+                "raw_N/A_all_projects_summary_chunk_26",
+                "raw_N/A_all_projects_summary_chunk_27",
+                "raw_N/A_all_projects_summary_chunk_28",
+                "raw_N/A_all_projects_summary_chunk_29",
+                "raw_N/A_all_projects_summary_chunk_30",
+                "raw_N/A_all_projects_summary_chunk_31"
+            ]
+        },
+        "data/raw/personal_background.md": {
+            "hash": "f892354b12f9a9e63253fa1482957606",
+            "chunk_ids": [
+                "raw_N/A_personal_background_chunk_0",
+                "raw_N/A_personal_background_chunk_1",
+                "raw_N/A_personal_background_chunk_2",
+                "raw_N/A_personal_background_chunk_3",
+                "raw_N/A_personal_background_chunk_4",
+                "raw_N/A_personal_background_chunk_5",
+                "raw_N/A_personal_background_chunk_6",
+                "raw_N/A_personal_background_chunk_7"
+            ]
+        },
+        "data/raw/README.md": {
+            "hash": "8412054e97ec51136b955e6efa823819",
+            "chunk_ids": [
+                "raw_N/A_README_chunk_0",
+                "raw_N/A_README_chunk_1",
+                "raw_N/A_README_chunk_2",
+                "raw_N/A_README_chunk_3",
+                "raw_N/A_README_chunk_4"
+            ]
+        },
+        "data/raw/metadata.json": {
+            "hash": "a1d86f63862a278e14e7bb4271be2d36",
+            "chunk_ids": [
+                "raw_N/A_metadata_chunk_0"
+            ]
+        },
+        "data/linkedin/posts.md": {
+            "hash": "880690b65f9d8ab3b61840b3e8bcebff",
+            "chunk_ids": [
+                "linkedin_N/A_posts_chunk_0",
+                "linkedin_N/A_posts_chunk_1",
+                "linkedin_N/A_posts_chunk_2",
+                "linkedin_N/A_posts_chunk_3",
+                "linkedin_N/A_posts_chunk_4",
+                "linkedin_N/A_posts_chunk_5",
+                "linkedin_N/A_posts_chunk_6",
+                "linkedin_N/A_posts_chunk_7",
+                "linkedin_N/A_posts_chunk_8",
+                "linkedin_N/A_posts_chunk_9",
+                "linkedin_N/A_posts_chunk_10"
+            ]
+        },
+        "data/linkedin/profile_summary.md": {
+            "hash": "d41d8cd98f00b204e9800998ecf8427e",
+            "chunk_ids": []
+        },
+        "data/static/public_profile.md": {
+            "hash": "9665911b6cd12fd338d4b64ac35730be",
+            "chunk_ids": [
+                "static_N/A_public_profile_chunk_0",
+                "static_N/A_public_profile_chunk_1",
+                "static_N/A_public_profile_chunk_2",
+                "static_N/A_public_profile_chunk_3",
+                "static_N/A_public_profile_chunk_4",
+                "static_N/A_public_profile_chunk_5"
+            ]
+        },
+        "data/static/README.md": {
+            "hash": "e71befe905c6348f2d497aee35f37f81",
+            "chunk_ids": [
+                "static_N/A_README_chunk_0",
+                "static_N/A_README_chunk_1",
+                "static_N/A_README_chunk_2",
+                "static_N/A_README_chunk_3",
+                "static_N/A_README_chunk_4"
+            ]
+        },
+        "data/static/rules_of_engagement.md": {
+            "hash": "8ae2fa2657d09d3cd03002ba1de861b7",
+            "chunk_ids": [
+                "static_N/A_rules_of_engagement_chunk_0",
+                "static_N/A_rules_of_engagement_chunk_1",
+                "static_N/A_rules_of_engagement_chunk_2",
+                "static_N/A_rules_of_engagement_chunk_3",
+                "static_N/A_rules_of_engagement_chunk_4",
+                "static_N/A_rules_of_engagement_chunk_5",
+                "static_N/A_rules_of_engagement_chunk_6",
+                "static_N/A_rules_of_engagement_chunk_7"
+            ]
+        }
+    }
 }
