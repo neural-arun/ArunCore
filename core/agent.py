@@ -523,9 +523,60 @@ def _run_pre_escalation(route: Dict[str, Any], user_input: str, tool_map: Dict[s
             ToolMessage(
                 content=str(result),
                 tool_call_id=f"pre_notify_{int(time.time())}",
+                )
             )
-        )
     return messages
+
+
+def maybe_notify_arun(
+    user_input: str,
+    final_response: str,
+    scratchpad: List[Any],
+    tool_map: Dict[str, Any],
+    user_metadata: Optional[Dict[str, Any]] = None,
+) -> Optional[str]:
+    """
+    Deterministic safety-net escalation used by API / bot flows.
+    This prevents the frontend from depending entirely on the model
+    remembering to call `notify_arun` on its own.
+    """
+    route = _route_user_input(user_input)
+    used_notify_tool = any(
+        isinstance(item, dict) and item.get("name") == "notify_arun"
+        for item in scratchpad
+    )
+
+    should_notify = route.get("needs_notify", False)
+    category = route.get("notify_category") or "UNKNOWN_QUESTION"
+    reason = route.get("reason", "unspecified")
+
+    if not should_notify and _contains_uncertainty(final_response):
+        should_notify = True
+        category = "UNKNOWN_QUESTION"
+        reason = "uncertainty_detected_after_answer"
+
+    if not should_notify or used_notify_tool:
+        return None
+
+    tool_func = tool_map.get("notify_arun")
+    if not tool_func:
+        return "SKIPPED: notify_arun tool unavailable."
+
+    metadata = {
+        "reason": reason,
+        "assistant_output": _safe_truncate(final_response, 300),
+        "timestamp": _utc_now(),
+    }
+    if user_metadata:
+        metadata.update(user_metadata)
+
+    return tool_func.invoke(
+        {
+            "category": category,
+            "user_input": user_input,
+            "user_metadata_json": json.dumps(metadata),
+        }
+    )
 
 
 def chat_interface():
