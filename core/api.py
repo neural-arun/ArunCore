@@ -125,7 +125,11 @@ async def chat_endpoint(req: ChatRequest):
                 {"channel": "api", "session_id": req.session_id},
             )
             if escalation_result:
-                thoughts.append(f"Auto-escalation triggered: {escalation_result.get('category', 'UNKNOWN')}")
+                if isinstance(escalation_result, dict):
+                    escalation_category = escalation_result.get("category", "UNKNOWN")
+                else:
+                    escalation_category = "UNKNOWN_QUESTION"
+                thoughts.append(f"Auto-escalation triggered: {escalation_category}")
 
             memory.add_interaction(req.message, final_response)
 

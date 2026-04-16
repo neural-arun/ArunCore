@@ -68,6 +68,14 @@ function parseStreamLine(line: string): StreamEvent | null {
   return parsed as StreamEvent;
 }
 
+function requireFinalEvent(event: FinalStreamEvent | null): FinalStreamEvent {
+  if (!event) {
+    throw new Error("No final response received");
+  }
+
+  return event;
+}
+
 const QUICK_ACTIONS = [
   { label: "Show best projects", prompt: "Show me Arun's best projects with impact." },
   { label: "Explain RAG system", prompt: "Explain Arun's RAG system architecture and what makes it different." },
@@ -227,10 +235,9 @@ export default function ChatPage() {
         handleStreamLine(trailingLine);
       }
 
-      if (!finalData) throw new Error("No final response received");
-
-      const fullReply = finalData.reply;
-      const responseThoughts = Array.isArray(finalData.thoughts) ? finalData.thoughts : [];
+      const resolvedFinalData = requireFinalEvent(finalData);
+      const fullReply = resolvedFinalData.reply;
+      const responseThoughts = Array.isArray(resolvedFinalData.thoughts) ? resolvedFinalData.thoughts : [];
 
       setIsLoading(false);
       setIsTypingStr(true);
