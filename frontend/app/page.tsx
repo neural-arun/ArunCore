@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { type ComponentPropsWithoutRef, useEffect, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -15,7 +15,29 @@ interface Message {
 }
 
 const SESSION_KEY = "aruncore_session_id";
-const API_URL = "https://neural-arun-aruncore.hf.space";
+const API_URL = process.env.NEXT_PUBLIC_API_URL?.trim() || "http://127.0.0.1:8000";
+
+interface StatusStreamEvent {
+  type: "status";
+  content: string;
+}
+
+interface FinalStreamEvent {
+  type: "final";
+  reply: string;
+  thoughts?: string[];
+  session_id?: string;
+}
+
+interface ErrorStreamEvent {
+  type: "error";
+  content: string;
+}
+
+type StreamEvent = StatusStreamEvent | FinalStreamEvent | ErrorStreamEvent;
+type MarkdownCodeProps = ComponentPropsWithoutRef<"code"> & {
+  inline?: boolean;
+};
 
 function getOrCreateSessionId(): string {
   if (typeof window === "undefined") return uuidv4();
@@ -26,6 +48,24 @@ function getOrCreateSessionId(): string {
     sessionStorage.setItem(SESSION_KEY, id);
   }
   return id;
+}
+
+function parseStreamLine(line: string): StreamEvent | null {
+  const trimmedLine = line.trim();
+  if (!trimmedLine) return null;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(trimmedLine);
+  } catch {
+    throw new Error(`Invalid stream payload: ${trimmedLine.slice(0, 160)}`);
+  }
+
+  if (!parsed || typeof parsed !== "object" || !("type" in parsed)) {
+    throw new Error("Stream payload missing required type field.");
+  }
+
+  return parsed as StreamEvent;
 }
 
 const QUICK_ACTIONS = [
@@ -137,34 +177,54 @@ export default function ChatPage() {
         }),
       });
 
+      if (!response.ok) {
+        const errorText = (await response.text()).trim();
+        throw new Error(errorText || `Backend returned HTTP ${response.status}`);
+      }
+
       if (!response.body) throw new Error("No response body");
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let done = false;
-      let finalData: any = null;
+      let buffer = "";
+      let finalData: FinalStreamEvent | null = null;
 
-      while (!done) {
-        const { value, done: doneReading } = await reader.read();
-        done = doneReading;
-        const chunk = decoder.decode(value, { stream: true });
-        
-        // Handle NDJSON (NewLine Delimited JSON)
-        const lines = chunk.split("\n").filter(l => l.trim());
-        for (const line of lines) {
-          try {
-            const parsed = JSON.parse(line);
-            if (parsed.type === "status") {
-              setStatus(parsed.content);
-            } else if (parsed.type === "final") {
-              finalData = parsed;
-            } else if (parsed.type === "error") {
-              throw new Error(parsed.content);
-            }
-          } catch (e) {
-            console.error("Failed to parse line:", line, e);
-          }
+      const handleStreamLine = (line: string) => {
+        const parsed = parseStreamLine(line);
+        if (!parsed) return;
+
+        if (parsed.type === "status") {
+          setStatus(parsed.content);
+          return;
         }
+
+        if (parsed.type === "final") {
+          finalData = parsed;
+          return;
+        }
+
+        if (parsed.type === "error") {
+          throw new Error(parsed.content);
+        }
+      };
+
+      while (true) {
+        const { value, done } = await reader.read();
+        buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+
+        const lines = buffer.split(/\r?\n/);
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          handleStreamLine(line);
+        }
+
+        if (done) break;
+      }
+
+      const trailingLine = buffer.trim();
+      if (trailingLine) {
+        handleStreamLine(trailingLine);
       }
 
       if (!finalData) throw new Error("No final response received");
@@ -179,7 +239,7 @@ export default function ChatPage() {
 
       const chars = fullReply.split("");
       let currentText = "";
-      const speed = chars.length > 600 ? 5 : 12;
+      const speed = chars.length > 1000 ? 0 : chars.length > 600 ? 1 : 3;
 
       for (let i = 0; i < chars.length; i++) {
         currentText += chars[i];
@@ -197,7 +257,12 @@ export default function ChatPage() {
       setIsTypingStr(false);
     } catch (error) {
       console.error("Chat Error:", error);
-      setMessages((prev) => [...prev, { role: "assistant", content: "Connectivity issue. Try again." }]);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Unable to reach the backend. Check the API URL and server logs.";
+
+      setMessages((prev) => [...prev, { role: "assistant", content: `Request failed: ${errorMessage}` }]);
       setIsLoading(false);
       setIsTypingStr(false);
     }
@@ -243,7 +308,7 @@ export default function ChatPage() {
                     <table {...props} />
                   </div>
                 ),
-                code({ inline, className, children, ...props }: any) {
+                code({ inline, className, children, ...props }: MarkdownCodeProps) {
                   return !inline ? (
                     <div className="code-block-wrapper">
                       <pre className="code-block">

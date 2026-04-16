@@ -92,7 +92,11 @@ A Next.js (TypeScript) single-page application.
     cd frontend
     npm install
     ```
-2.  **Launch the UI:** Runs the development server on `localhost:3000`.
+2.  **Configure the Backend URL:** Create `frontend/.env.local` and point it at the running API.
+    ```env
+    NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
+    ```
+3.  **Launch the UI:** Runs the development server on `localhost:3000`.
     ```bash
     npm run dev
     ```
