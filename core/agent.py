@@ -1,3 +1,4 @@
+import threading
 from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import html
@@ -160,51 +161,28 @@ def _send_telegram_message(
         "parse_mode": parse_mode,
         "disable_web_page_preview": True,
     }
-    session = requests.Session()
-    # Trust env to allow users to use HTTP_PROXY or HTTPS_PROXY if they are in regions where Telegram is blocked
-    session.trust_env = True
 
     last_error = "Unknown Telegram error."
-    try:
-        for attempt in range(max_attempts):
-            try:
-                response = session.post(
-                    url,
-                    json=payload,
-                    timeout=(connect_timeout, read_timeout),
-                )
-                if response.status_code == 200:
-                    print(f"[TELEGRAM:{delivery_label}] sendMessage success on attempt {attempt + 1}")
-                    return "SUCCESS"
+    for attempt in range(max_attempts):
+        try:
+            response = requests.post(
+                url,
+                json=payload,
+                timeout=(connect_timeout, read_timeout),
+                proxies={"http": None, "https": None}
+            )
+            if response.status_code == 200:
+                print(f"[TELEGRAM:{delivery_label}] sendMessage success on attempt {attempt + 1}")
+                return "SUCCESS"
+            
+            last_error = f"Telegram API returned {response.status_code} - {response.text[:300]}"
+        except requests.exceptions.Timeout:
+            last_error = "Telegram request timed out."
+        except requests.exceptions.RequestException as e:
+            last_error = f"Could not send notification. {str(e)}"
 
-                last_error = f"Telegram API returned {response.status_code} - {response.text[:300]}"
-            except requests.exceptions.Timeout:
-                last_error = "Telegram request timed out."
-            except requests.exceptions.RequestException as e:
-                last_error = f"Could not send notification. {str(e)}"
-
-            try:
-                response = session.get(
-                    url,
-                    params=payload,
-                    timeout=(connect_timeout, read_timeout),
-                )
-                if response.status_code == 200:
-                    print(
-                        f"[TELEGRAM:{delivery_label}] sendMessage success via GET fallback on attempt {attempt + 1}"
-                    )
-                    return "SUCCESS"
-
-                last_error = f"Telegram GET fallback returned {response.status_code} - {response.text[:300]}"
-            except requests.exceptions.Timeout:
-                last_error = "Telegram GET fallback timed out."
-            except requests.exceptions.RequestException as e:
-                last_error = f"Telegram GET fallback failed. {str(e)}"
-
-            if attempt < max_attempts - 1 and retry_sleep_seconds > 0:
-                time.sleep(retry_sleep_seconds * (attempt + 1))
-    finally:
-        session.close()
+        if attempt < max_attempts - 1 and retry_sleep_seconds > 0:
+            time.sleep(retry_sleep_seconds * (attempt + 1))
 
     print(f"[TELEGRAM ERROR:{delivery_label}] {last_error}")
     return f"FAILED: {last_error}"
@@ -223,7 +201,7 @@ def _send_telegram_message_fast(
         parse_mode=parse_mode,
         max_attempts=1,
         connect_timeout=2.5,
-        read_timeout=4.0,
+        read_timeout=6.0,
         retry_sleep_seconds=0.0,
         delivery_label="fast",
     )
@@ -305,9 +283,15 @@ def _run_background_task(task_name: str, func, *args, **kwargs):
 
 def _submit_background_task(task_name: str, func, *args, **kwargs) -> bool:
     try:
-        _BACKGROUND_EXECUTOR.submit(_run_background_task, task_name, func, *args, **kwargs)
+        t = threading.Thread(
+            target=_run_background_task,
+            args=(task_name, func) + args,
+            kwargs=kwargs,
+            daemon=True
+        )
+        t.start()
         return True
-    except RuntimeError as e:
+    except Exception as e:
         print(f"[BACKGROUND ERROR] Failed to submit {task_name}: {e}")
         return False
 

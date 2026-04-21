@@ -81,7 +81,7 @@ async def chat_endpoint(req: ChatRequest):
                 req.message,
                 global_tool_map,
                 {"channel": "api", "session_id": req.session_id},
-                False,
+                True,
             )
             if pre_escalation:
                 pre_escalation_result = pre_escalation.get("result", "")
@@ -91,6 +91,8 @@ async def chat_endpoint(req: ChatRequest):
                     pre_escalation_status = "Notification was already sent recently."
                 elif "Retry queued in background" in pre_escalation_result:
                     pre_escalation_status = "Notification was not confirmed immediately. Retrying in background."
+                elif "QUEUED" in pre_escalation_result:
+                    pre_escalation_status = "Sending notification to Arun in the background."
                 else:
                     pre_escalation_status = "Notification could not be confirmed."
 
