@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 import re
 from dotenv import load_dotenv
@@ -7,7 +8,7 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 # Import the core ArunCore engine
-from core.agent import init_agent, RollingMemory, maybe_notify_arun
+from core.agent import init_agent, RollingMemory, maybe_notify_arun, run_pre_escalation, send_debug_event
 
 load_dotenv()
 
@@ -37,49 +38,111 @@ def run_agent(chat_id: int, user_message: str) -> str:
     """Runs the full stateful agent loop for a given user message."""
     memory = get_or_create_memory(chat_id)
     scratchpad = []
-    final_response = None
-    max_iterations = 3
 
-    for _ in range(max_iterations):
-        messages = prompt.format_messages(
-            running_summary=memory.running_summary,
-            chat_history=memory.get_messages(),
-            input=user_message,
-            agent_scratchpad=scratchpad,
+    try:
+        send_debug_event(
+            "user_message",
+            user_message,
+            {"channel": "telegram", "chat_id": chat_id},
         )
-        ai_msg = main_llm.invoke(messages)
 
-        if ai_msg.tool_calls:
-            scratchpad.append(ai_msg)
-            for tc in ai_msg.tool_calls:
-                tool_func = tool_map.get(tc["name"])
-                try:
-                    result = tool_func.invoke(tc["args"])
-                except Exception as e:
-                    result = f"Tool error: {e}"
-                scratchpad.append({
-                    "role": "tool",
-                    "name": tc["name"],
-                    "tool_call_id": tc["id"],
-                    "content": str(result)[:2000],
-                })
-        else:
-            final_response = ai_msg.content
-            break
+        pre_escalation_messages = run_pre_escalation(
+            user_message,
+            tool_map,
+            {"channel": "telegram", "chat_id": chat_id},
+        )
+        scratchpad.extend(pre_escalation_messages)
+        if pre_escalation_messages:
+            send_debug_event(
+                "pre_escalation",
+                "\n\n".join(str(message.content) for message in pre_escalation_messages),
+                {"channel": "telegram", "chat_id": chat_id},
+            )
 
-    if not final_response:
-        final_response = "I ran into an issue internally. Please try again."
+        final_response = None
+        max_iterations = 3
 
-    maybe_notify_arun(
-        user_input=user_message,
-        final_response=final_response,
-        scratchpad=scratchpad,
-        tool_map=tool_map,
-        user_metadata={"channel": "telegram", "chat_id": chat_id},
-    )
+        for _ in range(max_iterations):
+            messages = prompt.format_messages(
+                running_summary=memory.running_summary,
+                chat_history=memory.get_messages(),
+                input=user_message,
+                agent_scratchpad=scratchpad,
+            )
+            ai_msg = main_llm.invoke(messages)
 
-    memory.add_interaction(user_message, final_response)
-    return final_response
+            if ai_msg.tool_calls:
+                scratchpad.append(ai_msg)
+                for tc in ai_msg.tool_calls:
+                    tool_name = tc["name"]
+                    tool_args = tc.get("args", {})
+                    send_debug_event(
+                        "tool_call",
+                        json.dumps(tool_args, ensure_ascii=False, indent=2, default=str),
+                        {
+                            "channel": "telegram",
+                            "chat_id": chat_id,
+                            "tool_name": tool_name,
+                        },
+                    )
+
+                    tool_func = tool_map.get(tool_name)
+                    try:
+                        result = tool_func.invoke(tool_args)
+                    except Exception as e:
+                        result = f"Tool error: {e}"
+
+                    scratchpad.append({
+                        "role": "tool",
+                        "name": tool_name,
+                        "tool_call_id": tc["id"],
+                        "content": str(result)[:2000],
+                    })
+                    send_debug_event(
+                        "tool_result",
+                        str(result),
+                        {
+                            "channel": "telegram",
+                            "chat_id": chat_id,
+                            "tool_name": tool_name,
+                        },
+                    )
+            else:
+                final_response = ai_msg.content
+                break
+
+        if not final_response:
+            final_response = "I ran into an issue internally. Please try again."
+
+        send_debug_event(
+            "assistant_reply",
+            final_response,
+            {"channel": "telegram", "chat_id": chat_id},
+        )
+
+        escalation_result = maybe_notify_arun(
+            user_input=user_message,
+            final_response=final_response,
+            scratchpad=scratchpad,
+            tool_map=tool_map,
+            user_metadata={"channel": "telegram", "chat_id": chat_id},
+        )
+        if escalation_result:
+            send_debug_event(
+                "auto_escalation",
+                str(escalation_result),
+                {"channel": "telegram", "chat_id": chat_id},
+            )
+
+        memory.add_interaction(user_message, final_response)
+        return final_response
+    except Exception as e:
+        send_debug_event(
+            "error",
+            str(e),
+            {"channel": "telegram", "chat_id": chat_id},
+        )
+        raise
 
 
 # === Telegram Handlers ===

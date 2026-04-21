@@ -39,6 +39,7 @@ MAX_SEARCH_RESULTS = 5
 MAX_TOOL_ROUNDS = 4
 MAX_HISTORY_MESSAGES = 8
 NOTIFICATION_COOLDOWN_SECONDS = 300
+TELEGRAM_MESSAGE_CHAR_LIMIT = 3500
 
 # =========================================================
 # GLOBAL STATE
@@ -96,6 +97,138 @@ def _escape_html(text: str) -> str:
     return html.escape(text or "")
 
 
+def _is_truthy_env(value: Optional[str], default: bool = False) -> bool:
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _telegram_debug_enabled() -> bool:
+    return _is_truthy_env(os.getenv("TELEGRAM_DEBUG_ENABLED"), default=True)
+
+
+def _get_telegram_target(debug: bool = False) -> Tuple[Optional[str], Optional[str]]:
+    if debug:
+        token = os.getenv("TELEGRAM_DEBUG_BOT_TOKEN") or os.getenv("TELEGRAM_BOT_TOKEN")
+        chat_id = os.getenv("TELEGRAM_DEBUG_CHAT_ID") or os.getenv("TELEGRAM_CHAT_ID")
+        return token, chat_id
+
+    return os.getenv("TELEGRAM_BOT_TOKEN"), os.getenv("TELEGRAM_CHAT_ID")
+
+
+def _chunk_text(text: str, limit: int = 2200) -> List[str]:
+    cleaned = (text or "").strip() or "(empty)"
+    parts: List[str] = []
+    remaining = cleaned
+
+    while len(remaining) > limit:
+        split_at = remaining.rfind("\n", 0, limit)
+        if split_at < int(limit * 0.5):
+            split_at = remaining.rfind(" ", 0, limit)
+        if split_at <= 0:
+            split_at = limit
+
+        parts.append(remaining[:split_at].strip())
+        remaining = remaining[split_at:].lstrip()
+
+    if remaining:
+        parts.append(remaining)
+
+    return parts or ["(empty)"]
+
+
+def _send_telegram_message(
+    token: str,
+    chat_id: str,
+    text: str,
+    parse_mode: str = "HTML",
+) -> str:
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {
+        "chat_id": chat_id,
+        "text": text,
+        "parse_mode": parse_mode,
+        "disable_web_page_preview": True,
+    }
+
+    last_error = "Unknown Telegram error."
+    for attempt in range(3):
+        try:
+            response = requests.post(url, json=payload, timeout=4)
+            if response.status_code == 200:
+                return "SUCCESS"
+
+            last_error = f"Telegram API returned {response.status_code} - {response.text[:300]}"
+        except requests.exceptions.Timeout:
+            last_error = "Telegram request timed out."
+        except requests.exceptions.RequestException as e:
+            last_error = f"Could not send notification. {str(e)}"
+
+        if attempt < 2:
+            time.sleep(0.8 * (attempt + 1))
+
+    return f"FAILED: {last_error}"
+
+
+def send_debug_event(
+    event_type: str,
+    content: str,
+    metadata: Optional[Dict[str, Any]] = None,
+) -> str:
+    if not _telegram_debug_enabled():
+        return "SKIPPED: debug stream disabled."
+
+    token, chat_id = _get_telegram_target(debug=True)
+    if not token or not chat_id:
+        return "SKIPPED: Telegram debug credentials are missing."
+
+    header_lines = [
+        "<b>ArunCore Debug</b>",
+        f"<b>Type:</b> {_escape_html(event_type)}",
+        f"<b>Time:</b> {_escape_html(_utc_now())}",
+    ]
+
+    metadata = metadata or {}
+    for key, value in metadata.items():
+        if value is None:
+            continue
+        header_lines.append(f"<b>{_escape_html(str(key))}:</b> {_escape_html(str(value))}")
+
+    content_chunks = _chunk_text(content, limit=2200)
+
+    for index, chunk in enumerate(content_chunks, start=1):
+        lines = list(header_lines)
+        if len(content_chunks) > 1:
+            lines.append(f"<b>Part:</b> {index}/{len(content_chunks)}")
+        lines.extend(["", "<b>Content</b>", _escape_html(chunk)])
+
+        result = _send_telegram_message(
+            token=token,
+            chat_id=chat_id,
+            text="\n".join(lines)[:TELEGRAM_MESSAGE_CHAR_LIMIT],
+        )
+        if not result.startswith("SUCCESS"):
+            return result
+
+    return "SUCCESS: debug event sent."
+
+
+def _build_notification_metadata(
+    reason: str,
+    user_metadata: Optional[Dict[str, Any]] = None,
+    assistant_output: Optional[str] = None,
+) -> Dict[str, Any]:
+    metadata: Dict[str, Any] = {
+        "reason": reason,
+        "timestamp": _utc_now(),
+    }
+    if assistant_output:
+        metadata["assistant_output"] = _safe_truncate(assistant_output, 300)
+    if user_metadata:
+        metadata.update(user_metadata)
+    return metadata
+
+
 def _contains_uncertainty(text: str) -> bool:
     lowered = (text or "").lower()
     phrases = [
@@ -122,11 +255,19 @@ def _route_user_input(user_input: str) -> Dict[str, Any]:
     text = (user_input or "").strip()
     lower = text.lower()
 
-    explicit_contact_patterns = [
+    direct_contact_patterns = [
         r"\btalk to arun\b",
         r"\bconnect me to arun\b",
         r"\bcontact arun\b",
         r"\bmessage arun\b",
+        r"\bnotify arun\b",
+        r"\bsend (?:a )?notification to arun\b",
+        r"\btell arun\b",
+        r"\blet arun know\b",
+        r"\bping arun\b",
+    ]
+
+    lead_patterns = [
         r"\bhire arun\b",
         r"\bcollaborate\b",
         r"\bpartnership\b",
@@ -162,15 +303,25 @@ def _route_user_input(user_input: str) -> Dict[str, Any]:
         r"\bconfused\b",
     ]
 
-    if any(re.search(pattern, lower) for pattern in explicit_contact_patterns):
-        category = "URGENT" if any(
-            phrase in lower for phrase in ["talk to arun", "contact arun", "connect me to arun", "message arun"]
-        ) else "LEAD"
+    notify_words_present = any(word in lower for word in ["notify", "notification", "ping"])
+    notify_target_present = any(word in lower for word in ["arun", "you", "twin"])
+
+    if any(re.search(pattern, lower) for pattern in direct_contact_patterns) or (
+        notify_words_present and notify_target_present
+    ):
         return {
             "needs_search": False,
             "needs_notify": True,
-            "notify_category": category,
-            "reason": "explicit_contact_or_business_intent",
+            "notify_category": "URGENT",
+            "reason": "explicit_contact_or_notification_intent",
+        }
+
+    if any(re.search(pattern, lower) for pattern in lead_patterns):
+        return {
+            "needs_search": False,
+            "needs_notify": True,
+            "notify_category": "LEAD",
+            "reason": "business_or_lead_intent",
         }
 
     if any(re.search(pattern, lower) for pattern in arun_context_patterns):
@@ -228,8 +379,7 @@ def notify_arun(category: str, user_input: str, user_metadata_json: str = "") ->
         user_input: The user's message.
         user_metadata_json: Optional JSON string with extra metadata.
     """
-    token = os.getenv("TELEGRAM_BOT_TOKEN")
-    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+    token, chat_id = _get_telegram_target(debug=False)
 
     if not token or not chat_id:
         return "FAILED: Telegram credentials are missing from the environment."
@@ -261,23 +411,14 @@ def notify_arun(category: str, user_input: str, user_metadata_json: str = "") ->
         f"{meta_block}"
     )
 
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
-    payload = {
-        "chat_id": chat_id,
-        "text": text,
-        "parse_mode": "HTML",
-        "disable_web_page_preview": True,
-    }
-
-    try:
-        response = requests.post(url, json=payload, timeout=10)
-        if response.status_code == 200:
-            return "SUCCESS: Arun has been notified."
-        return f"FAILED: Telegram API returned {response.status_code} - {response.text[:300]}"
-    except requests.exceptions.Timeout:
-        return "ERROR: Telegram request timed out."
-    except requests.exceptions.RequestException as e:
-        return f"ERROR: Could not send notification. {str(e)}"
+    result = _send_telegram_message(
+        token=token,
+        chat_id=chat_id,
+        text=text,
+    )
+    if result.startswith("SUCCESS"):
+        return "SUCCESS: Arun has been notified."
+    return result
 
 
 @tool
@@ -508,7 +649,29 @@ def _tool_map(tools):
     return {tool_obj.name: tool_obj for tool_obj in tools}
 
 
-def _run_pre_escalation(route: Dict[str, Any], user_input: str, tool_map: Dict[str, Any]) -> List[ToolMessage]:
+def _tool_was_used(scratchpad: List[Any], tool_name: str) -> bool:
+    for item in scratchpad:
+        if isinstance(item, dict) and item.get("name") == tool_name:
+            return True
+
+        if isinstance(item, AIMessage):
+            for tool_call in item.tool_calls or []:
+                if tool_call.get("name") == tool_name:
+                    return True
+
+        if isinstance(item, ToolMessage) and tool_name == "notify_arun":
+            if str(getattr(item, "tool_call_id", "")).startswith("pre_notify_"):
+                return True
+
+    return False
+
+
+def _run_pre_escalation(
+    route: Dict[str, Any],
+    user_input: str,
+    tool_map: Dict[str, Any],
+    user_metadata: Optional[Dict[str, Any]] = None,
+) -> List[ToolMessage]:
     messages: List[ToolMessage] = []
     if route.get("needs_notify"):
         category = route.get("notify_category") or "UNKNOWN_QUESTION"
@@ -517,10 +680,10 @@ def _run_pre_escalation(route: Dict[str, Any], user_input: str, tool_map: Dict[s
                 "category": category,
                 "user_input": user_input,
                 "user_metadata_json": json.dumps(
-                    {
-                        "reason": route.get("reason", "unknown"),
-                        "timestamp": _utc_now(),
-                    }
+                    _build_notification_metadata(
+                        reason=route.get("reason", "unknown"),
+                        user_metadata=user_metadata,
+                    )
                 ),
             }
         )
@@ -531,6 +694,15 @@ def _run_pre_escalation(route: Dict[str, Any], user_input: str, tool_map: Dict[s
                 )
             )
     return messages
+
+
+def run_pre_escalation(
+    user_input: str,
+    tool_map: Dict[str, Any],
+    user_metadata: Optional[Dict[str, Any]] = None,
+) -> List[ToolMessage]:
+    route = _route_user_input(user_input)
+    return _run_pre_escalation(route, user_input, tool_map, user_metadata=user_metadata)
 
 
 def maybe_notify_arun(
@@ -546,10 +718,7 @@ def maybe_notify_arun(
     remembering to call `notify_arun` on its own.
     """
     route = _route_user_input(user_input)
-    used_notify_tool = any(
-        isinstance(item, dict) and item.get("name") == "notify_arun"
-        for item in scratchpad
-    )
+    used_notify_tool = _tool_was_used(scratchpad, "notify_arun")
 
     should_notify = route.get("needs_notify", False)
     category = route.get("notify_category") or "UNKNOWN_QUESTION"
@@ -567,13 +736,11 @@ def maybe_notify_arun(
     if not tool_func:
         return "SKIPPED: notify_arun tool unavailable."
 
-    metadata = {
-        "reason": reason,
-        "assistant_output": _safe_truncate(final_response, 300),
-        "timestamp": _utc_now(),
-    }
-    if user_metadata:
-        metadata.update(user_metadata)
+    metadata = _build_notification_metadata(
+        reason=reason,
+        user_metadata=user_metadata,
+        assistant_output=final_response,
+    )
 
     return tool_func.invoke(
         {
