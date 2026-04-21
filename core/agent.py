@@ -12,6 +12,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
+import socket
+import urllib3.util.connection as urllib3_cn
+
+# Force IPv4 for requests to prevent Docker IPv6 timeouts
+urllib3_cn.allowed_gai_family = lambda: socket.AF_INET
+
 from dotenv import load_dotenv
 
 from langchain_cohere import CohereRerank
@@ -149,9 +155,9 @@ def _send_telegram_message(
     text: str,
     parse_mode: str = "HTML",
     max_attempts: int = 3,
-    connect_timeout: float = 3.05,
-    read_timeout: float = 10.0,
-    retry_sleep_seconds: float = 0.8,
+    connect_timeout: float = 5.0,
+    read_timeout: float = 15.0,
+    retry_sleep_seconds: float = 1.0,
     delivery_label: str = "default",
 ) -> str:
     url = f"https://api.telegram.org/bot{token}/sendMessage"
@@ -163,26 +169,31 @@ def _send_telegram_message(
     }
 
     last_error = "Unknown Telegram error."
-    for attempt in range(max_attempts):
-        try:
-            response = requests.post(
-                url,
-                json=payload,
-                timeout=(connect_timeout, read_timeout),
-                proxies={"http": None, "https": None}
-            )
-            if response.status_code == 200:
-                print(f"[TELEGRAM:{delivery_label}] sendMessage success on attempt {attempt + 1}")
-                return "SUCCESS"
-            
-            last_error = f"Telegram API returned {response.status_code} - {response.text[:300]}"
-        except requests.exceptions.Timeout:
-            last_error = "Telegram request timed out."
-        except requests.exceptions.RequestException as e:
-            last_error = f"Could not send notification. {str(e)}"
+    session = requests.Session()
+    session.trust_env = True
+    
+    try:
+        for attempt in range(max_attempts):
+            try:
+                response = session.post(
+                    url,
+                    json=payload,
+                    timeout=(connect_timeout, read_timeout),
+                )
+                if response.status_code == 200:
+                    print(f"[TELEGRAM:{delivery_label}] sendMessage success on attempt {attempt + 1}")
+                    return "SUCCESS"
+                
+                last_error = f"Telegram API returned {response.status_code} - {response.text[:300]}"
+            except requests.exceptions.Timeout:
+                last_error = "Telegram request timed out."
+            except requests.exceptions.RequestException as e:
+                last_error = f"Could not send notification. {str(e)}"
 
-        if attempt < max_attempts - 1 and retry_sleep_seconds > 0:
-            time.sleep(retry_sleep_seconds * (attempt + 1))
+            if attempt < max_attempts - 1 and retry_sleep_seconds > 0:
+                time.sleep(retry_sleep_seconds * (attempt + 1))
+    finally:
+        session.close()
 
     print(f"[TELEGRAM ERROR:{delivery_label}] {last_error}")
     return f"FAILED: {last_error}"
@@ -200,8 +211,6 @@ def _send_telegram_message_fast(
         text=text,
         parse_mode=parse_mode,
         max_attempts=1,
-        connect_timeout=2.5,
-        read_timeout=6.0,
         retry_sleep_seconds=0.0,
         delivery_label="fast",
     )
@@ -219,9 +228,7 @@ def _send_telegram_message_retrying(
         text=text,
         parse_mode=parse_mode,
         max_attempts=3,
-        connect_timeout=3.05,
-        read_timeout=10.0,
-        retry_sleep_seconds=0.8,
+        retry_sleep_seconds=1.0,
         delivery_label="retry",
     )
 
@@ -416,25 +423,17 @@ def _attempt_notify_arun_with_retry_queue(
     user_input: str,
     user_metadata_json: str = "",
 ) -> str:
-    result = _deliver_notify_arun(
-        category=category,
-        user_input=user_input,
-        user_metadata_json=user_metadata_json,
-        fast=True,
-    )
-    if result.startswith("SUCCESS") or result.startswith("SKIPPED"):
-        return result
-
     submitted = _submit_background_task(
-        "notify_arun_retry",
+        "notify_arun_bg",
         _deliver_notify_arun,
         category,
         user_input,
         user_metadata_json,
+        False,
     )
     if submitted:
-        return f"QUEUED: Delivery delayed ({result}). Retry queued in background."
-    return result
+        return "QUEUED: Sending notification to Arun in the background."
+    return "FAILED: Could not queue notification."
 
 
 def _contains_uncertainty(text: str) -> bool:
