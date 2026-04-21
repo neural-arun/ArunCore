@@ -93,6 +93,8 @@ async def chat_endpoint(req: ChatRequest):
                     pre_escalation_status = "Notification was not confirmed immediately. Retrying in background."
                 elif "QUEUED" in pre_escalation_result:
                     pre_escalation_status = "Sending notification to Arun in the background."
+                elif "credentials are missing" in pre_escalation_result:
+                    pre_escalation_status = "Error: Please set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in HuggingFace Spaces Settings!"
                 else:
                     pre_escalation_status = "Notification could not be confirmed."
 
@@ -209,9 +211,33 @@ async def chat_endpoint(req: ChatRequest):
     return StreamingResponse(event_generator(), media_type="application/x-ndjson")
 
 
+
+    return StreamingResponse(event_generator(), media_type="application/x-ndjson")
+
+
 @app.get("/health")
 async def health_check():
     return {"status": "online", "active_sessions": len(active_sessions)}
+
+
+@app.get("/test-telegram")
+def test_telegram():
+    import os, requests, traceback
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
+    if not token or not chat_id:
+        return {"status": "error", "message": "Missing credentials", "has_token": bool(token), "has_chat_id": bool(chat_id)}
+    
+    token = token.strip(' "\'')
+    chat_id = chat_id.strip(' "\'')
+    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    payload = {"chat_id": chat_id, "text": "Test message from HuggingFace backend!"}
+    
+    try:
+        response = requests.post(url, json=payload, timeout=10)
+        return {"status": "finished", "status_code": response.status_code, "response": response.text}
+    except Exception as e:
+        return {"status": "exception", "error": str(e), "traceback": traceback.format_exc()}
 
 
 if __name__ == "__main__":

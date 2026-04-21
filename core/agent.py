@@ -347,6 +347,10 @@ def queue_chat_history_to_telegram(
     user_input: str,
     assistant_response: str,
 ) -> str:
+    token, chat_id = _get_telegram_target(debug=False)
+    if not token or not chat_id:
+        return "FAILED: Telegram credentials are missing from the environment."
+        
     if _submit_background_task("chat_history_log", send_chat_history_to_telegram, session_id, user_input, assistant_response):
         return "QUEUED: chat history scheduled."
     return "FAILED: could not queue chat history."
@@ -423,6 +427,10 @@ def _attempt_notify_arun_with_retry_queue(
     user_input: str,
     user_metadata_json: str = "",
 ) -> str:
+    token, chat_id = _get_telegram_target(debug=False)
+    if not token or not chat_id:
+        return "FAILED: Telegram credentials are missing from the environment."
+
     submitted = _submit_background_task(
         "notify_arun_bg",
         _deliver_notify_arun,
