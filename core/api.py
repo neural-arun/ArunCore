@@ -222,7 +222,9 @@ async def health_check():
 
 @app.get("/test-telegram")
 def test_telegram():
-    import os, requests, traceback
+    import os, requests, traceback, ssl
+    from requests.adapters import HTTPAdapter
+    
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
     if not token or not chat_id:
@@ -231,10 +233,20 @@ def test_telegram():
     token = token.strip(' "\'')
     chat_id = chat_id.strip(' "\'')
     url = f"https://api.telegram.org/bot{token}/sendMessage"
-    payload = {"chat_id": chat_id, "text": "Test message from HuggingFace backend!"}
+    payload = {"chat_id": chat_id, "text": "Test message from HuggingFace backend with MTU Fix!"}
     
+    class SmallCipherAdapter(HTTPAdapter):
+        def init_poolmanager(self, *args, **kwargs):
+            context = ssl.create_default_context()
+            context.set_ciphers("ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384")
+            kwargs['ssl_context'] = context
+            return super().init_poolmanager(*args, **kwargs)
+
     try:
-        response = requests.post(url, json=payload, timeout=10)
+        session = requests.Session()
+        session.trust_env = False
+        session.mount("https://api.telegram.org", SmallCipherAdapter())
+        response = session.post(url, json=payload, timeout=10)
         return {"status": "finished", "status_code": response.status_code, "response": response.text}
     except Exception as e:
         return {"status": "exception", "error": str(e), "traceback": traceback.format_exc()}

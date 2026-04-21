@@ -13,6 +13,8 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import requests
 import socket
+import ssl
+from requests.adapters import HTTPAdapter
 import urllib3.util.connection as urllib3_cn
 
 # Force IPv4 for requests to prevent Docker IPv6 timeouts
@@ -149,6 +151,14 @@ def _chunk_text(text: str, limit: int = 2200) -> List[str]:
     return parts or ["(empty)"]
 
 
+class SmallCipherAdapter(HTTPAdapter):
+    def init_poolmanager(self, *args, **kwargs):
+        context = ssl.create_default_context()
+        # Limit ciphers to shrink ClientHello size and bypass MTU blackholes
+        context.set_ciphers("ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384")
+        kwargs['ssl_context'] = context
+        return super().init_poolmanager(*args, **kwargs)
+
 def _send_telegram_message(
     token: str,
     chat_id: str,
@@ -171,6 +181,7 @@ def _send_telegram_message(
     last_error = "Unknown Telegram error."
     session = requests.Session()
     session.trust_env = False  # Explicitly disable environment proxies
+    session.mount("https://api.telegram.org", SmallCipherAdapter())
     
     try:
         for attempt in range(max_attempts):
