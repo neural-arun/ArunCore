@@ -12,13 +12,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
-import socket
-import ssl
-from requests.adapters import HTTPAdapter
-import urllib3.util.connection as urllib3_cn
 
-# Force IPv4 for requests to prevent Docker IPv6 timeouts
-urllib3_cn.allowed_gai_family = lambda: socket.AF_INET
 
 from dotenv import load_dotenv
 
@@ -151,13 +145,7 @@ def _chunk_text(text: str, limit: int = 2200) -> List[str]:
     return parts or ["(empty)"]
 
 
-class SmallCipherAdapter(HTTPAdapter):
-    def init_poolmanager(self, *args, **kwargs):
-        context = ssl.create_default_context()
-        # Limit ciphers to shrink ClientHello size and bypass MTU blackholes
-        context.set_ciphers("ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384")
-        kwargs['ssl_context'] = context
-        return super().init_poolmanager(*args, **kwargs)
+
 
 def _send_telegram_message(
     token: str,
@@ -165,58 +153,56 @@ def _send_telegram_message(
     text: str,
     parse_mode: str = "HTML",
     max_attempts: int = 3,
-    connect_timeout: float = 5.0,
-    read_timeout: float = 15.0,
-    retry_sleep_seconds: float = 1.0,
     delivery_label: str = "default",
 ) -> str:
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
+    import urllib3
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    
     payload = {
         "chat_id": chat_id,
         "text": text,
         "parse_mode": parse_mode,
         "disable_web_page_preview": True,
     }
-    
-    data = json.dumps(payload).encode('utf-8')
-    headers = {
-        'Content-Type': 'application/json',
-        'User-Agent': 'ArunCore/1.0'
-    }
 
-    last_error = "Unknown Telegram error."
+    last_error = "Unknown error"
     
-    # Custom SSL context to bypass potential strict validations on cloud
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
+    # Attempt 1: Standard domain request (works locally on Windows)
+    try:
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
+        response = requests.post(url, json=payload, timeout=10)
+        if response.status_code == 200:
+            print(f"[TELEGRAM:{delivery_label}] success via domain")
+            return "SUCCESS"
+        last_error = f"Domain API returned {response.status_code}"
+    except Exception as e:
+        last_error = f"Domain request failed: {e}"
 
-    for attempt in range(max_attempts):
-        try:
-            req = urllib.request.Request(url, data=data, headers=headers, method='POST')
-            with urllib.request.urlopen(req, timeout=connect_timeout, context=ctx) as response:
-                if response.status == 200:
-                    print(f"[TELEGRAM:{delivery_label}] sendMessage success on attempt {attempt + 1}")
-                    return "SUCCESS"
-                
-                resp_text = response.read().decode('utf-8')
-                last_error = f"Telegram API returned {response.status} - {resp_text[:300]}"
-                
-        except urllib.error.HTTPError as e:
+    print(f"[TELEGRAM:{delivery_label}] Domain method failed ({last_error}). Using IP bypass...")
+
+    # Attempt 2: Direct IPs to bypass DNS & SNI blocks (for HuggingFace)
+    telegram_ips = ["149.154.167.220", "149.154.166.120", "149.154.165.120"]
+    for ip in telegram_ips:
+        url_ip = f"https://{ip}/bot{token}/sendMessage"
+        for attempt in range(max_attempts):
             try:
-                resp_text = e.read().decode('utf-8')
-            except:
-                resp_text = str(e)
-            last_error = f"Telegram API HTTPError {e.code}: {resp_text[:300]}"
-        except urllib.error.URLError as e:
-            last_error = f"Telegram request URL/Network Error: {str(e.reason)}"
-        except Exception as e:
-            last_error = f"Could not send notification. {str(e)}"
+                response = requests.post(
+                    url_ip, 
+                    json=payload, 
+                    headers={"Host": "api.telegram.org"},
+                    verify=False, 
+                    timeout=15
+                )
+                if response.status_code == 200:
+                    print(f"[TELEGRAM:{delivery_label}] success via IP {ip}")
+                    return "SUCCESS"
+                last_error = f"IP {ip} returned {response.status_code}"
+            except Exception as e:
+                last_error = f"IP {ip} failed: {e}"
+                
+            time.sleep(1.5)
 
-        if attempt < max_attempts - 1 and retry_sleep_seconds > 0:
-            time.sleep(retry_sleep_seconds * (attempt + 1))
-
-    print(f"[TELEGRAM ERROR:{delivery_label}] {last_error}")
+    print(f"[TELEGRAM ERROR:{delivery_label}] All methods failed. Last error: {last_error}")
     return f"FAILED: {last_error}"
 
 
