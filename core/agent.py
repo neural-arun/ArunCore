@@ -156,8 +156,9 @@ def _send_telegram_message(
     last_error = "Unknown Telegram error."
     for attempt in range(3):
         try:
-            response = requests.post(url, json=payload, timeout=4)
+            response = requests.post(url, data=payload, timeout=(3.05, 10))
             if response.status_code == 200:
+                print(f"[TELEGRAM] sendMessage success on attempt {attempt + 1}")
                 return "SUCCESS"
 
             last_error = f"Telegram API returned {response.status_code} - {response.text[:300]}"
@@ -166,9 +167,22 @@ def _send_telegram_message(
         except requests.exceptions.RequestException as e:
             last_error = f"Could not send notification. {str(e)}"
 
+        try:
+            response = requests.get(url, params=payload, timeout=(3.05, 10))
+            if response.status_code == 200:
+                print(f"[TELEGRAM] sendMessage success via GET fallback on attempt {attempt + 1}")
+                return "SUCCESS"
+
+            last_error = f"Telegram GET fallback returned {response.status_code} - {response.text[:300]}"
+        except requests.exceptions.Timeout:
+            last_error = "Telegram GET fallback timed out."
+        except requests.exceptions.RequestException as e:
+            last_error = f"Telegram GET fallback failed. {str(e)}"
+
         if attempt < 2:
             time.sleep(0.8 * (attempt + 1))
 
+    print(f"[TELEGRAM ERROR] {last_error}")
     return f"FAILED: {last_error}"
 
 
@@ -217,7 +231,10 @@ def send_debug_event(
 
 def _run_background_task(task_name: str, func, *args, **kwargs):
     try:
-        return func(*args, **kwargs)
+        result = func(*args, **kwargs)
+        if isinstance(result, str):
+            print(f"[BACKGROUND] {task_name}: {result}")
+        return result
     except Exception as e:
         print(f"[BACKGROUND ERROR] {task_name}: {e}")
         return None
@@ -260,6 +277,49 @@ def _build_notification_metadata(
     if user_metadata:
         metadata.update(user_metadata)
     return metadata
+
+
+def _deliver_notify_arun(category: str, user_input: str, user_metadata_json: str = "") -> str:
+    token, chat_id = _get_telegram_target(debug=False)
+
+    if not token or not chat_id:
+        return "FAILED: Telegram credentials are missing from the environment."
+
+    category = (category or "UNKNOWN_QUESTION").strip().upper()
+    if category not in ALLOWED_NOTIFY_CATEGORIES:
+        category = "UNKNOWN_QUESTION"
+
+    cleaned_input = _safe_truncate(user_input, 1200)
+    metadata = _parse_json_metadata(user_metadata_json)
+
+    if not _should_send_alert(category, cleaned_input):
+        return f"SKIPPED: duplicate {category} alert suppressed."
+
+    meta_lines = []
+    if metadata:
+        for key, value in metadata.items():
+            meta_lines.append(f"<b>{_escape_html(str(key))}:</b> {_escape_html(str(value))}")
+
+    meta_block = "\n".join(meta_lines)
+    if meta_block:
+        meta_block = f"\n\n<b>Metadata</b>\n{meta_block}"
+
+    text = (
+        f"🚨 <b>ArunCore Alert</b> 🚨\n\n"
+        f"<b>Category:</b> {_escape_html(category)}\n"
+        f"<b>Time:</b> {_escape_html(_utc_now())}\n\n"
+        f"<b>User Input</b>\n{_escape_html(cleaned_input)}"
+        f"{meta_block}"
+    )
+
+    result = _send_telegram_message(
+        token=token,
+        chat_id=chat_id,
+        text=text,
+    )
+    if result.startswith("SUCCESS"):
+        return "SUCCESS: Arun has been notified."
+    return result
 
 
 def _contains_uncertainty(text: str) -> bool:
@@ -412,6 +472,16 @@ def notify_arun(category: str, user_input: str, user_metadata_json: str = "") ->
         user_input: The user's message.
         user_metadata_json: Optional JSON string with extra metadata.
     """
+    submitted = _submit_background_task(
+        "notify_arun",
+        _deliver_notify_arun,
+        category,
+        user_input,
+        user_metadata_json,
+    )
+    if submitted:
+        return "SUCCESS: notification queued for Arun."
+
     token, chat_id = _get_telegram_target(debug=False)
 
     if not token or not chat_id:
@@ -742,12 +812,12 @@ def _run_pre_escalation(
         }
 
     if background:
-        submitted = _submit_background_task("pre_escalation_notify", tool_func.invoke, payload)
+        result = str(tool_func.invoke(payload))
         return {
-            "handled": submitted,
+            "handled": result.startswith("SKIPPED"),
             "category": category,
             "reason": reason,
-            "result": "QUEUED: pre-escalation notification scheduled." if submitted else "FAILED: could not queue pre-escalation notification.",
+            "result": result,
         }
 
     result = str(tool_func.invoke(payload))
@@ -789,7 +859,7 @@ def maybe_notify_arun(
     remembering to call `notify_arun` on its own.
     """
     route = _route_user_input(user_input)
-    used_notify_tool = pre_notified or _tool_was_used(scratchpad, "notify_arun")
+    used_notify_tool = pre_notified
 
     should_notify = route.get("needs_notify", False)
     category = route.get("notify_category") or "UNKNOWN_QUESTION"

@@ -18,5 +18,5 @@ COPY . .
 # Expose port 7860 (HuggingFace Spaces default port)
 EXPOSE 7860
 
-# Run both the Telegram Bot (in the background) and the FastAPI server
-CMD python -m core.bot & uvicorn core.api:app --host 0.0.0.0 --port 7860
+# Run the FastAPI server, and only start the public Telegram bot when explicitly enabled
+CMD if [ "$RUN_TELEGRAM_PUBLIC_BOT" = "true" ]; then python -m core.bot & fi; uvicorn core.api:app --host 0.0.0.0 --port 7860
