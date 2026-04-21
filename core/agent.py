@@ -91,8 +91,11 @@ def _should_send_alert(category: str, user_input: str) -> bool:
     last_seen = _RECENT_ALERTS.get(key)
     if last_seen and (now - last_seen) < NOTIFICATION_COOLDOWN_SECONDS:
         return False
-    _RECENT_ALERTS[key] = now
     return True
+
+
+def _mark_alert_sent(category: str, user_input: str) -> None:
+    _RECENT_ALERTS[_alert_key(category, user_input)] = time.time()
 
 
 def _escape_html(text: str) -> str:
@@ -152,35 +155,40 @@ def _send_telegram_message(
         "parse_mode": parse_mode,
         "disable_web_page_preview": True,
     }
+    session = requests.Session()
+    session.trust_env = False
 
     last_error = "Unknown Telegram error."
-    for attempt in range(3):
-        try:
-            response = requests.post(url, data=payload, timeout=(3.05, 10))
-            if response.status_code == 200:
-                print(f"[TELEGRAM] sendMessage success on attempt {attempt + 1}")
-                return "SUCCESS"
+    try:
+        for attempt in range(3):
+            try:
+                response = session.post(url, data=payload, timeout=(3.05, 10))
+                if response.status_code == 200:
+                    print(f"[TELEGRAM] sendMessage success on attempt {attempt + 1}")
+                    return "SUCCESS"
 
-            last_error = f"Telegram API returned {response.status_code} - {response.text[:300]}"
-        except requests.exceptions.Timeout:
-            last_error = "Telegram request timed out."
-        except requests.exceptions.RequestException as e:
-            last_error = f"Could not send notification. {str(e)}"
+                last_error = f"Telegram API returned {response.status_code} - {response.text[:300]}"
+            except requests.exceptions.Timeout:
+                last_error = "Telegram request timed out."
+            except requests.exceptions.RequestException as e:
+                last_error = f"Could not send notification. {str(e)}"
 
-        try:
-            response = requests.get(url, params=payload, timeout=(3.05, 10))
-            if response.status_code == 200:
-                print(f"[TELEGRAM] sendMessage success via GET fallback on attempt {attempt + 1}")
-                return "SUCCESS"
+            try:
+                response = session.get(url, params=payload, timeout=(3.05, 10))
+                if response.status_code == 200:
+                    print(f"[TELEGRAM] sendMessage success via GET fallback on attempt {attempt + 1}")
+                    return "SUCCESS"
 
-            last_error = f"Telegram GET fallback returned {response.status_code} - {response.text[:300]}"
-        except requests.exceptions.Timeout:
-            last_error = "Telegram GET fallback timed out."
-        except requests.exceptions.RequestException as e:
-            last_error = f"Telegram GET fallback failed. {str(e)}"
+                last_error = f"Telegram GET fallback returned {response.status_code} - {response.text[:300]}"
+            except requests.exceptions.Timeout:
+                last_error = "Telegram GET fallback timed out."
+            except requests.exceptions.RequestException as e:
+                last_error = f"Telegram GET fallback failed. {str(e)}"
 
-        if attempt < 2:
-            time.sleep(0.8 * (attempt + 1))
+            if attempt < 2:
+                time.sleep(0.8 * (attempt + 1))
+    finally:
+        session.close()
 
     print(f"[TELEGRAM ERROR] {last_error}")
     return f"FAILED: {last_error}"
@@ -318,6 +326,7 @@ def _deliver_notify_arun(category: str, user_input: str, user_metadata_json: str
         text=text,
     )
     if result.startswith("SUCCESS"):
+        _mark_alert_sent(category, cleaned_input)
         return "SUCCESS: Arun has been notified."
     return result
 
@@ -802,25 +811,26 @@ def _run_pre_escalation(
         reason=reason,
         user_metadata=user_metadata,
     )
-    tool_func = tool_map.get("notify_arun")
-    if not tool_func:
+    if background:
+        submitted = _submit_background_task(
+            "pre_escalation_notify",
+            _deliver_notify_arun,
+            category,
+            user_input,
+            payload["user_metadata_json"],
+        )
         return {
             "handled": False,
             "category": category,
             "reason": reason,
-            "result": "SKIPPED: notify_arun tool unavailable.",
+            "result": "QUEUED: pre-escalation notification scheduled." if submitted else "FAILED: could not queue pre-escalation notification.",
         }
 
-    if background:
-        result = str(tool_func.invoke(payload))
-        return {
-            "handled": result.startswith("SKIPPED"),
-            "category": category,
-            "reason": reason,
-            "result": result,
-        }
-
-    result = str(tool_func.invoke(payload))
+    result = _deliver_notify_arun(
+        category=category,
+        user_input=user_input,
+        user_metadata_json=payload["user_metadata_json"],
+    )
     return {
         "handled": result.startswith("SUCCESS") or result.startswith("SKIPPED"),
         "category": category,
@@ -873,10 +883,6 @@ def maybe_notify_arun(
     if not should_notify or used_notify_tool:
         return None
 
-    tool_func = tool_map.get("notify_arun")
-    if not tool_func:
-        return "SKIPPED: notify_arun tool unavailable."
-
     payload = _build_notify_payload(
         category=category,
         user_input=user_input,
@@ -885,7 +891,11 @@ def maybe_notify_arun(
         assistant_output=final_response,
     )
 
-    return tool_func.invoke(payload)
+    return _deliver_notify_arun(
+        category=payload["category"],
+        user_input=payload["user_input"],
+        user_metadata_json=payload["user_metadata_json"],
+    )
 
 
 def queue_maybe_notify_arun(

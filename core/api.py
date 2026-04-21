@@ -79,7 +79,7 @@ async def chat_endpoint(req: ChatRequest):
                 req.message,
                 global_tool_map,
                 {"channel": "api", "session_id": req.session_id},
-                True,
+                False,
             )
             if pre_escalation:
                 yield json.dumps({"type": "status", "content": "Sending notification to Arun..."}) + "\n"

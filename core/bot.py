@@ -50,7 +50,7 @@ def run_agent(chat_id: int, user_message: str) -> str:
             user_message,
             tool_map,
             {"channel": "telegram", "chat_id": chat_id},
-            True,
+            False,
         )
         if pre_escalation:
             queue_debug_event(
