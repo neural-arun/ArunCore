@@ -222,8 +222,7 @@ async def health_check():
 
 @app.get("/test-telegram")
 def test_telegram():
-    import os, requests, traceback, ssl
-    from requests.adapters import HTTPAdapter
+    import os, urllib.request, json, traceback, ssl
     
     token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
@@ -233,21 +232,20 @@ def test_telegram():
     token = token.strip(' "\'')
     chat_id = chat_id.strip(' "\'')
     url = f"https://api.telegram.org/bot{token}/sendMessage"
-    payload = {"chat_id": chat_id, "text": "Test message from HuggingFace backend with MTU Fix!"}
+    payload = {"chat_id": chat_id, "text": "Test message from HuggingFace backend using urllib!"}
     
-    class SmallCipherAdapter(HTTPAdapter):
-        def init_poolmanager(self, *args, **kwargs):
-            context = ssl.create_default_context()
-            context.set_ciphers("ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384")
-            kwargs['ssl_context'] = context
-            return super().init_poolmanager(*args, **kwargs)
+    data = json.dumps(payload).encode('utf-8')
+    headers = {'Content-Type': 'application/json', 'User-Agent': 'ArunCore/1.0'}
+    
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
 
     try:
-        session = requests.Session()
-        session.trust_env = False
-        session.mount("https://api.telegram.org", SmallCipherAdapter())
-        response = session.post(url, json=payload, timeout=10)
-        return {"status": "finished", "status_code": response.status_code, "response": response.text}
+        req = urllib.request.Request(url, data=data, headers=headers, method='POST')
+        with urllib.request.urlopen(req, timeout=10, context=ctx) as response:
+            resp_text = response.read().decode('utf-8')
+            return {"status": "finished", "status_code": response.status, "response": resp_text}
     except Exception as e:
         return {"status": "exception", "error": str(e), "traceback": traceback.format_exc()}
 

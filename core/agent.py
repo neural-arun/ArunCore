@@ -171,60 +171,50 @@ def _send_telegram_message(
     delivery_label: str = "default",
 ) -> str:
     url = f"https://api.telegram.org/bot{token}/sendMessage"
-    url_ip = f"https://149.154.167.220/bot{token}/sendMessage"
-    
     payload = {
         "chat_id": chat_id,
         "text": text,
         "parse_mode": parse_mode,
         "disable_web_page_preview": True,
     }
+    
+    data = json.dumps(payload).encode('utf-8')
+    headers = {
+        'Content-Type': 'application/json',
+        'User-Agent': 'ArunCore/1.0'
+    }
 
     last_error = "Unknown Telegram error."
-    session = requests.Session()
-    session.trust_env = False  # Explicitly disable environment proxies
-    session.mount("https://api.telegram.org", SmallCipherAdapter())
-    session.mount("https://149.154.167.220", SmallCipherAdapter())
     
-    import urllib3
-    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
-    
-    try:
-        for attempt in range(max_attempts):
-            try:
-                response = session.post(
-                    url,
-                    json=payload,
-                    timeout=(connect_timeout, read_timeout),
-                    proxies={"http": None, "https": None}
-                )
-                if response.status_code == 200:
+    # Custom SSL context to bypass potential strict validations on cloud
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
+    for attempt in range(max_attempts):
+        try:
+            req = urllib.request.Request(url, data=data, headers=headers, method='POST')
+            with urllib.request.urlopen(req, timeout=connect_timeout, context=ctx) as response:
+                if response.status == 200:
                     print(f"[TELEGRAM:{delivery_label}] sendMessage success on attempt {attempt + 1}")
                     return "SUCCESS"
                 
-                last_error = f"Telegram API returned {response.status_code} - {response.text[:300]}"
-            except Exception as e:
-                print(f"[TELEGRAM:{delivery_label}] Main URL failed: {e}. Trying IP fallback...")
-                try:
-                    response = session.post(
-                        url_ip,
-                        json=payload,
-                        timeout=(connect_timeout, read_timeout),
-                        proxies={"http": None, "https": None},
-                        verify=False,
-                        headers={"Host": "api.telegram.org"}
-                    )
-                    if response.status_code == 200:
-                        print(f"[TELEGRAM:{delivery_label}] sendMessage success via IP fallback on attempt {attempt + 1}")
-                        return "SUCCESS"
-                    last_error = f"Telegram IP API returned {response.status_code} - {response.text[:300]}"
-                except Exception as e2:
-                    last_error = f"Telegram IP fallback failed: {str(e2)}"
+                resp_text = response.read().decode('utf-8')
+                last_error = f"Telegram API returned {response.status} - {resp_text[:300]}"
+                
+        except urllib.error.HTTPError as e:
+            try:
+                resp_text = e.read().decode('utf-8')
+            except:
+                resp_text = str(e)
+            last_error = f"Telegram API HTTPError {e.code}: {resp_text[:300]}"
+        except urllib.error.URLError as e:
+            last_error = f"Telegram request URL/Network Error: {str(e.reason)}"
+        except Exception as e:
+            last_error = f"Could not send notification. {str(e)}"
 
-            if attempt < max_attempts - 1 and retry_sleep_seconds > 0:
-                time.sleep(retry_sleep_seconds * (attempt + 1))
-    finally:
-        session.close()
+        if attempt < max_attempts - 1 and retry_sleep_seconds > 0:
+            time.sleep(retry_sleep_seconds * (attempt + 1))
 
     print(f"[TELEGRAM ERROR:{delivery_label}] {last_error}")
     return f"FAILED: {last_error}"
