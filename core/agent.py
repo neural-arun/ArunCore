@@ -147,6 +147,11 @@ def _send_telegram_message(
     chat_id: str,
     text: str,
     parse_mode: str = "HTML",
+    max_attempts: int = 3,
+    connect_timeout: float = 3.05,
+    read_timeout: float = 10.0,
+    retry_sleep_seconds: float = 0.8,
+    delivery_label: str = "default",
 ) -> str:
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = {
@@ -160,11 +165,15 @@ def _send_telegram_message(
 
     last_error = "Unknown Telegram error."
     try:
-        for attempt in range(3):
+        for attempt in range(max_attempts):
             try:
-                response = session.post(url, data=payload, timeout=(3.05, 10))
+                response = session.post(
+                    url,
+                    data=payload,
+                    timeout=(connect_timeout, read_timeout),
+                )
                 if response.status_code == 200:
-                    print(f"[TELEGRAM] sendMessage success on attempt {attempt + 1}")
+                    print(f"[TELEGRAM:{delivery_label}] sendMessage success on attempt {attempt + 1}")
                     return "SUCCESS"
 
                 last_error = f"Telegram API returned {response.status_code} - {response.text[:300]}"
@@ -174,9 +183,15 @@ def _send_telegram_message(
                 last_error = f"Could not send notification. {str(e)}"
 
             try:
-                response = session.get(url, params=payload, timeout=(3.05, 10))
+                response = session.get(
+                    url,
+                    params=payload,
+                    timeout=(connect_timeout, read_timeout),
+                )
                 if response.status_code == 200:
-                    print(f"[TELEGRAM] sendMessage success via GET fallback on attempt {attempt + 1}")
+                    print(
+                        f"[TELEGRAM:{delivery_label}] sendMessage success via GET fallback on attempt {attempt + 1}"
+                    )
                     return "SUCCESS"
 
                 last_error = f"Telegram GET fallback returned {response.status_code} - {response.text[:300]}"
@@ -185,13 +200,51 @@ def _send_telegram_message(
             except requests.exceptions.RequestException as e:
                 last_error = f"Telegram GET fallback failed. {str(e)}"
 
-            if attempt < 2:
-                time.sleep(0.8 * (attempt + 1))
+            if attempt < max_attempts - 1 and retry_sleep_seconds > 0:
+                time.sleep(retry_sleep_seconds * (attempt + 1))
     finally:
         session.close()
 
-    print(f"[TELEGRAM ERROR] {last_error}")
+    print(f"[TELEGRAM ERROR:{delivery_label}] {last_error}")
     return f"FAILED: {last_error}"
+
+
+def _send_telegram_message_fast(
+    token: str,
+    chat_id: str,
+    text: str,
+    parse_mode: str = "HTML",
+) -> str:
+    return _send_telegram_message(
+        token=token,
+        chat_id=chat_id,
+        text=text,
+        parse_mode=parse_mode,
+        max_attempts=1,
+        connect_timeout=2.5,
+        read_timeout=4.0,
+        retry_sleep_seconds=0.0,
+        delivery_label="fast",
+    )
+
+
+def _send_telegram_message_retrying(
+    token: str,
+    chat_id: str,
+    text: str,
+    parse_mode: str = "HTML",
+) -> str:
+    return _send_telegram_message(
+        token=token,
+        chat_id=chat_id,
+        text=text,
+        parse_mode=parse_mode,
+        max_attempts=3,
+        connect_timeout=3.05,
+        read_timeout=10.0,
+        retry_sleep_seconds=0.8,
+        delivery_label="retry",
+    )
 
 
 def send_debug_event(
@@ -230,6 +283,7 @@ def send_debug_event(
             token=token,
             chat_id=chat_id,
             text="\n".join(lines)[:TELEGRAM_MESSAGE_CHAR_LIMIT],
+            delivery_label="debug",
         )
         if not result.startswith("SUCCESS"):
             return result
@@ -287,7 +341,12 @@ def _build_notification_metadata(
     return metadata
 
 
-def _deliver_notify_arun(category: str, user_input: str, user_metadata_json: str = "") -> str:
+def _deliver_notify_arun(
+    category: str,
+    user_input: str,
+    user_metadata_json: str = "",
+    fast: bool = False,
+) -> str:
     token, chat_id = _get_telegram_target(debug=False)
 
     if not token or not chat_id:
@@ -320,7 +379,8 @@ def _deliver_notify_arun(category: str, user_input: str, user_metadata_json: str
         f"{meta_block}"
     )
 
-    result = _send_telegram_message(
+    send_func = _send_telegram_message_fast if fast else _send_telegram_message_retrying
+    result = send_func(
         token=token,
         chat_id=chat_id,
         text=text,
@@ -328,6 +388,32 @@ def _deliver_notify_arun(category: str, user_input: str, user_metadata_json: str
     if result.startswith("SUCCESS"):
         _mark_alert_sent(category, cleaned_input)
         return "SUCCESS: Arun has been notified."
+    return result
+
+
+def _attempt_notify_arun_with_retry_queue(
+    category: str,
+    user_input: str,
+    user_metadata_json: str = "",
+) -> str:
+    result = _deliver_notify_arun(
+        category=category,
+        user_input=user_input,
+        user_metadata_json=user_metadata_json,
+        fast=True,
+    )
+    if result.startswith("SUCCESS") or result.startswith("SKIPPED"):
+        return result
+
+    submitted = _submit_background_task(
+        "notify_arun_retry",
+        _deliver_notify_arun,
+        category,
+        user_input,
+        user_metadata_json,
+    )
+    if submitted:
+        return f"{result} Retry queued in background."
     return result
 
 
@@ -481,6 +567,12 @@ def notify_arun(category: str, user_input: str, user_metadata_json: str = "") ->
         user_input: The user's message.
         user_metadata_json: Optional JSON string with extra metadata.
     """
+    return _attempt_notify_arun_with_retry_queue(
+        category=category,
+        user_input=user_input,
+        user_metadata_json=user_metadata_json,
+    )
+
     submitted = _submit_background_task(
         "notify_arun",
         _deliver_notify_arun,
@@ -826,7 +918,7 @@ def _run_pre_escalation(
             "result": "QUEUED: pre-escalation notification scheduled." if submitted else "FAILED: could not queue pre-escalation notification.",
         }
 
-    result = _deliver_notify_arun(
+    result = _attempt_notify_arun_with_retry_queue(
         category=category,
         user_input=user_input,
         user_metadata_json=payload["user_metadata_json"],

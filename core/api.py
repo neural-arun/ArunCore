@@ -68,6 +68,8 @@ async def chat_endpoint(req: ChatRequest):
         final_response = None
 
         try:
+            yield json.dumps({"type": "status", "content": "Analyzing your request..."}) + "\n"
+
             queue_debug_event(
                 "user_message",
                 req.message,
@@ -82,11 +84,21 @@ async def chat_endpoint(req: ChatRequest):
                 False,
             )
             if pre_escalation:
-                yield json.dumps({"type": "status", "content": "Sending notification to Arun..."}) + "\n"
-                thoughts.append("Sending notification to Arun...")
+                pre_escalation_result = pre_escalation.get("result", "")
+                if pre_escalation_result.startswith("SUCCESS"):
+                    pre_escalation_status = "Notification sent to Arun."
+                elif pre_escalation_result.startswith("SKIPPED"):
+                    pre_escalation_status = "Notification was already sent recently."
+                elif "Retry queued in background" in pre_escalation_result:
+                    pre_escalation_status = "Notification was not confirmed immediately. Retrying in background."
+                else:
+                    pre_escalation_status = "Notification could not be confirmed."
+
+                yield json.dumps({"type": "status", "content": pre_escalation_status}) + "\n"
+                thoughts.append(pre_escalation_status)
                 queue_debug_event(
                     "pre_escalation",
-                    pre_escalation.get("result", ""),
+                    pre_escalation_result,
                     {
                         "channel": "api",
                         "session_id": req.session_id,
@@ -96,9 +108,6 @@ async def chat_endpoint(req: ChatRequest):
                 )
 
             while iterations < max_iterations:
-                if iterations == 0:
-                    yield json.dumps({"type": "status", "content": "Analyzing your request..."}) + "\n"
-
                 messages = prompt.format_messages(
                     running_summary=memory.running_summary,
                     chat_history=memory.get_messages(),
