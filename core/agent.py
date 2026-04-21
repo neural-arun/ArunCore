@@ -170,7 +170,7 @@ def _send_telegram_message(
 
     last_error = "Unknown Telegram error."
     session = requests.Session()
-    session.trust_env = True
+    session.trust_env = False  # Explicitly disable environment proxies
     
     try:
         for attempt in range(max_attempts):
@@ -179,6 +179,7 @@ def _send_telegram_message(
                     url,
                     json=payload,
                     timeout=(connect_timeout, read_timeout),
+                    proxies={"http": None, "https": None} # Bypass HuggingFace internal proxy
                 )
                 if response.status_code == 200:
                     print(f"[TELEGRAM:{delivery_label}] sendMessage success on attempt {attempt + 1}")
