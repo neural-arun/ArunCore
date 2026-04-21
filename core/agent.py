@@ -1,3 +1,4 @@
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
 import html
 import json
@@ -48,6 +49,7 @@ TELEGRAM_MESSAGE_CHAR_LIMIT = 3500
 _GLOBAL_VECTORSTORE = None
 _GLOBAL_BM25 = None
 _GLOBAL_COMPRESSOR = None
+_BACKGROUND_EXECUTOR = ThreadPoolExecutor(max_workers=4, thread_name_prefix="aruncore-bg")
 
 _RECENT_ALERTS: Dict[str, float] = {}
 
@@ -211,6 +213,37 @@ def send_debug_event(
             return result
 
     return "SUCCESS: debug event sent."
+
+
+def _run_background_task(task_name: str, func, *args, **kwargs):
+    try:
+        return func(*args, **kwargs)
+    except Exception as e:
+        print(f"[BACKGROUND ERROR] {task_name}: {e}")
+        return None
+
+
+def _submit_background_task(task_name: str, func, *args, **kwargs) -> bool:
+    try:
+        _BACKGROUND_EXECUTOR.submit(_run_background_task, task_name, func, *args, **kwargs)
+        return True
+    except RuntimeError as e:
+        print(f"[BACKGROUND ERROR] Failed to submit {task_name}: {e}")
+        return False
+
+
+def queue_debug_event(
+    event_type: str,
+    content: str,
+    metadata: Optional[Dict[str, Any]] = None,
+) -> str:
+    if not _telegram_debug_enabled():
+        return "SKIPPED: debug stream disabled."
+
+    if _submit_background_task("debug_event", send_debug_event, event_type, content, metadata):
+        return "QUEUED: debug event scheduled."
+
+    return "FAILED: could not queue debug event."
 
 
 def _build_notification_metadata(
@@ -649,6 +682,25 @@ def _tool_map(tools):
     return {tool_obj.name: tool_obj for tool_obj in tools}
 
 
+def _build_notify_payload(
+    category: str,
+    user_input: str,
+    reason: str,
+    user_metadata: Optional[Dict[str, Any]] = None,
+    assistant_output: Optional[str] = None,
+) -> Dict[str, str]:
+    metadata = _build_notification_metadata(
+        reason=reason,
+        user_metadata=user_metadata,
+        assistant_output=assistant_output,
+    )
+    return {
+        "category": category,
+        "user_input": user_input,
+        "user_metadata_json": json.dumps(metadata),
+    }
+
+
 def _tool_was_used(scratchpad: List[Any], tool_name: str) -> bool:
     for item in scratchpad:
         if isinstance(item, dict) and item.get("name") == tool_name:
@@ -659,10 +711,6 @@ def _tool_was_used(scratchpad: List[Any], tool_name: str) -> bool:
                 if tool_call.get("name") == tool_name:
                     return True
 
-        if isinstance(item, ToolMessage) and tool_name == "notify_arun":
-            if str(getattr(item, "tool_call_id", "")).startswith("pre_notify_"):
-                return True
-
     return False
 
 
@@ -671,38 +719,60 @@ def _run_pre_escalation(
     user_input: str,
     tool_map: Dict[str, Any],
     user_metadata: Optional[Dict[str, Any]] = None,
-) -> List[ToolMessage]:
-    messages: List[ToolMessage] = []
-    if route.get("needs_notify"):
-        category = route.get("notify_category") or "UNKNOWN_QUESTION"
-        result = tool_map["notify_arun"].invoke(
-            {
-                "category": category,
-                "user_input": user_input,
-                "user_metadata_json": json.dumps(
-                    _build_notification_metadata(
-                        reason=route.get("reason", "unknown"),
-                        user_metadata=user_metadata,
-                    )
-                ),
-            }
-        )
-        messages.append(
-            ToolMessage(
-                content=str(result),
-                tool_call_id=f"pre_notify_{int(time.time())}",
-                )
-            )
-    return messages
+    background: bool = False,
+) -> Optional[Dict[str, Any]]:
+    if not route.get("needs_notify"):
+        return None
+
+    category = route.get("notify_category") or "UNKNOWN_QUESTION"
+    reason = route.get("reason", "unknown")
+    payload = _build_notify_payload(
+        category=category,
+        user_input=user_input,
+        reason=reason,
+        user_metadata=user_metadata,
+    )
+    tool_func = tool_map.get("notify_arun")
+    if not tool_func:
+        return {
+            "handled": False,
+            "category": category,
+            "reason": reason,
+            "result": "SKIPPED: notify_arun tool unavailable.",
+        }
+
+    if background:
+        submitted = _submit_background_task("pre_escalation_notify", tool_func.invoke, payload)
+        return {
+            "handled": submitted,
+            "category": category,
+            "reason": reason,
+            "result": "QUEUED: pre-escalation notification scheduled." if submitted else "FAILED: could not queue pre-escalation notification.",
+        }
+
+    result = str(tool_func.invoke(payload))
+    return {
+        "handled": result.startswith("SUCCESS") or result.startswith("SKIPPED"),
+        "category": category,
+        "reason": reason,
+        "result": result,
+    }
 
 
 def run_pre_escalation(
     user_input: str,
     tool_map: Dict[str, Any],
     user_metadata: Optional[Dict[str, Any]] = None,
-) -> List[ToolMessage]:
+    background: bool = False,
+) -> Optional[Dict[str, Any]]:
     route = _route_user_input(user_input)
-    return _run_pre_escalation(route, user_input, tool_map, user_metadata=user_metadata)
+    return _run_pre_escalation(
+        route,
+        user_input,
+        tool_map,
+        user_metadata=user_metadata,
+        background=background,
+    )
 
 
 def maybe_notify_arun(
@@ -711,6 +781,7 @@ def maybe_notify_arun(
     scratchpad: List[Any],
     tool_map: Dict[str, Any],
     user_metadata: Optional[Dict[str, Any]] = None,
+    pre_notified: bool = False,
 ) -> Optional[str]:
     """
     Deterministic safety-net escalation used by API / bot flows.
@@ -718,7 +789,7 @@ def maybe_notify_arun(
     remembering to call `notify_arun` on its own.
     """
     route = _route_user_input(user_input)
-    used_notify_tool = _tool_was_used(scratchpad, "notify_arun")
+    used_notify_tool = pre_notified or _tool_was_used(scratchpad, "notify_arun")
 
     should_notify = route.get("needs_notify", False)
     category = route.get("notify_category") or "UNKNOWN_QUESTION"
@@ -736,19 +807,45 @@ def maybe_notify_arun(
     if not tool_func:
         return "SKIPPED: notify_arun tool unavailable."
 
-    metadata = _build_notification_metadata(
+    payload = _build_notify_payload(
+        category=category,
+        user_input=user_input,
         reason=reason,
         user_metadata=user_metadata,
         assistant_output=final_response,
     )
 
-    return tool_func.invoke(
-        {
-            "category": category,
-            "user_input": user_input,
-            "user_metadata_json": json.dumps(metadata),
-        }
+    return tool_func.invoke(payload)
+
+
+def queue_maybe_notify_arun(
+    user_input: str,
+    final_response: str,
+    scratchpad: List[Any],
+    tool_map: Dict[str, Any],
+    user_metadata: Optional[Dict[str, Any]] = None,
+    pre_notified: bool = False,
+) -> str:
+    def _background_notify():
+        result = maybe_notify_arun(
+            user_input=user_input,
+            final_response=final_response,
+            scratchpad=scratchpad,
+            tool_map=tool_map,
+            user_metadata=user_metadata,
+            pre_notified=pre_notified,
+        )
+        if result:
+            send_debug_event("auto_escalation", str(result), user_metadata)
+        return result
+
+    submitted = _submit_background_task(
+        "maybe_notify_arun",
+        _background_notify,
     )
+    if submitted:
+        return "QUEUED: maybe_notify_arun scheduled."
+    return "FAILED: could not queue maybe_notify_arun."
 
 
 def chat_interface():
@@ -775,10 +872,11 @@ def chat_interface():
 
             route = _route_user_input(user_input)
             scratchpad: List[Any] = []
-            scratchpad.extend(_run_pre_escalation(route, user_input, tool_map))
+            pre_escalation = _run_pre_escalation(route, user_input, tool_map, background=True)
+            if pre_escalation:
+                print(f"[SYSTEM] {pre_escalation['result']}")
 
             final_response: Optional[str] = None
-            used_tools = set()
 
             for _ in range(MAX_TOOL_ROUNDS):
                 messages = prompt.format_messages(
@@ -794,7 +892,6 @@ def chat_interface():
                     scratchpad.append(ai_msg)
                     for tc in ai_msg.tool_calls:
                         tool_name = tc.get("name")
-                        used_tools.add(tool_name)
                         print(f"[SYSTEM] Tool call: {tool_name}({tc.get('args')})")
 
                         tool_func = tool_map.get(tool_name)
@@ -820,25 +917,15 @@ def chat_interface():
             if not final_response:
                 final_response = "I do not have enough information to answer that."
 
-            # Safety net: if the model sounds uncertain and did not notify Arun, escalate.
-            if _contains_uncertainty(final_response) and "notify_arun" not in used_tools:
-                try:
-                    notify_result = tool_map["notify_arun"].invoke(
-                        {
-                            "category": "UNKNOWN_QUESTION",
-                            "user_input": user_input,
-                            "user_metadata_json": json.dumps(
-                                {
-                                    "reason": "uncertainty_detected_after_answer",
-                                    "assistant_output": _safe_truncate(final_response, 300),
-                                    "timestamp": _utc_now(),
-                                }
-                            ),
-                        }
-                    )
-                    print(f"[SYSTEM] {notify_result}")
-                except Exception as e:
-                    print(f"[SYSTEM] Failed to auto-notify Arun: {e}")
+            notify_result = maybe_notify_arun(
+                user_input=user_input,
+                final_response=final_response,
+                scratchpad=scratchpad,
+                tool_map=tool_map,
+                pre_notified=bool(pre_escalation and pre_escalation.get("handled")),
+            )
+            if notify_result:
+                print(f"[SYSTEM] {notify_result}")
 
             print(f"\nArunCore: {final_response}\n")
             print("-" * 60)

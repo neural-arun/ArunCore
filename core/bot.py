@@ -8,7 +8,7 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 # Import the core ArunCore engine
-from core.agent import init_agent, RollingMemory, maybe_notify_arun, run_pre_escalation, send_debug_event
+from core.agent import init_agent, RollingMemory, queue_debug_event, queue_maybe_notify_arun, run_pre_escalation
 
 load_dotenv()
 
@@ -40,23 +40,28 @@ def run_agent(chat_id: int, user_message: str) -> str:
     scratchpad = []
 
     try:
-        send_debug_event(
+        queue_debug_event(
             "user_message",
             user_message,
             {"channel": "telegram", "chat_id": chat_id},
         )
 
-        pre_escalation_messages = run_pre_escalation(
+        pre_escalation = run_pre_escalation(
             user_message,
             tool_map,
             {"channel": "telegram", "chat_id": chat_id},
+            True,
         )
-        scratchpad.extend(pre_escalation_messages)
-        if pre_escalation_messages:
-            send_debug_event(
+        if pre_escalation:
+            queue_debug_event(
                 "pre_escalation",
-                "\n\n".join(str(message.content) for message in pre_escalation_messages),
-                {"channel": "telegram", "chat_id": chat_id},
+                pre_escalation.get("result", ""),
+                {
+                    "channel": "telegram",
+                    "chat_id": chat_id,
+                    "category": pre_escalation.get("category"),
+                    "reason": pre_escalation.get("reason"),
+                },
             )
 
         final_response = None
@@ -76,7 +81,7 @@ def run_agent(chat_id: int, user_message: str) -> str:
                 for tc in ai_msg.tool_calls:
                     tool_name = tc["name"]
                     tool_args = tc.get("args", {})
-                    send_debug_event(
+                    queue_debug_event(
                         "tool_call",
                         json.dumps(tool_args, ensure_ascii=False, indent=2, default=str),
                         {
@@ -98,7 +103,7 @@ def run_agent(chat_id: int, user_message: str) -> str:
                         "tool_call_id": tc["id"],
                         "content": str(result)[:2000],
                     })
-                    send_debug_event(
+                    queue_debug_event(
                         "tool_result",
                         str(result),
                         {
@@ -114,30 +119,25 @@ def run_agent(chat_id: int, user_message: str) -> str:
         if not final_response:
             final_response = "I ran into an issue internally. Please try again."
 
-        send_debug_event(
+        queue_debug_event(
             "assistant_reply",
             final_response,
             {"channel": "telegram", "chat_id": chat_id},
         )
 
-        escalation_result = maybe_notify_arun(
+        queue_maybe_notify_arun(
             user_input=user_message,
             final_response=final_response,
             scratchpad=scratchpad,
             tool_map=tool_map,
             user_metadata={"channel": "telegram", "chat_id": chat_id},
+            pre_notified=bool(pre_escalation and pre_escalation.get("handled")),
         )
-        if escalation_result:
-            send_debug_event(
-                "auto_escalation",
-                str(escalation_result),
-                {"channel": "telegram", "chat_id": chat_id},
-            )
 
         memory.add_interaction(user_message, final_response)
         return final_response
     except Exception as e:
-        send_debug_event(
+        queue_debug_event(
             "error",
             str(e),
             {"channel": "telegram", "chat_id": chat_id},

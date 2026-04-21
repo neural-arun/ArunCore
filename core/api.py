@@ -9,7 +9,7 @@ from typing import Dict
 from dotenv import load_dotenv
 
 # Import the core engine components
-from core.agent import init_agent, RollingMemory, maybe_notify_arun, run_pre_escalation, send_debug_event
+from core.agent import init_agent, RollingMemory, queue_debug_event, queue_maybe_notify_arun, run_pre_escalation
 from langchain_openai import ChatOpenAI
 
 load_dotenv()
@@ -68,28 +68,31 @@ async def chat_endpoint(req: ChatRequest):
         final_response = None
 
         try:
-            await asyncio.to_thread(
-                send_debug_event,
+            queue_debug_event(
                 "user_message",
                 req.message,
                 {"channel": "api", "session_id": req.session_id},
             )
 
-            pre_escalation_messages = await asyncio.to_thread(
+            pre_escalation = await asyncio.to_thread(
                 run_pre_escalation,
                 req.message,
                 global_tool_map,
                 {"channel": "api", "session_id": req.session_id},
+                True,
             )
-            if pre_escalation_messages:
-                scratchpad.extend(pre_escalation_messages)
+            if pre_escalation:
                 yield json.dumps({"type": "status", "content": "Sending notification to Arun..."}) + "\n"
                 thoughts.append("Sending notification to Arun...")
-                await asyncio.to_thread(
-                    send_debug_event,
+                queue_debug_event(
                     "pre_escalation",
-                    "\n\n".join(str(message.content) for message in pre_escalation_messages),
-                    {"channel": "api", "session_id": req.session_id},
+                    pre_escalation.get("result", ""),
+                    {
+                        "channel": "api",
+                        "session_id": req.session_id,
+                        "category": pre_escalation.get("category"),
+                        "reason": pre_escalation.get("reason"),
+                    },
                 )
 
             while iterations < max_iterations:
@@ -117,8 +120,7 @@ async def chat_endpoint(req: ChatRequest):
 
                         yield json.dumps({"type": "status", "content": status_msg}) + "\n"
                         thoughts.append(status_msg)
-                        await asyncio.to_thread(
-                            send_debug_event,
+                        queue_debug_event(
                             "tool_call",
                             json.dumps(tool_args, ensure_ascii=False, indent=2, default=str),
                             {
@@ -143,8 +145,7 @@ async def chat_endpoint(req: ChatRequest):
                             "tool_call_id": tc["id"],
                             "content": str(tool_result)[:2000],
                         })
-                        await asyncio.to_thread(
-                            send_debug_event,
+                        queue_debug_event(
                             "tool_result",
                             str(tool_result),
                             {
@@ -161,33 +162,20 @@ async def chat_endpoint(req: ChatRequest):
             if not final_response:
                 final_response = "I encountered a processing limit. How else can I help?"
 
-            await asyncio.to_thread(
-                send_debug_event,
+            queue_debug_event(
                 "assistant_reply",
                 final_response,
                 {"channel": "api", "session_id": req.session_id},
             )
 
-            escalation_result = await asyncio.to_thread(
-                maybe_notify_arun,
-                req.message,
-                final_response,
-                scratchpad,
-                global_tool_map,
-                {"channel": "api", "session_id": req.session_id},
+            queue_maybe_notify_arun(
+                user_input=req.message,
+                final_response=final_response,
+                scratchpad=scratchpad,
+                tool_map=global_tool_map,
+                user_metadata={"channel": "api", "session_id": req.session_id},
+                pre_notified=bool(pre_escalation and pre_escalation.get("handled")),
             )
-            if escalation_result:
-                if isinstance(escalation_result, dict):
-                    escalation_category = escalation_result.get("category", "UNKNOWN")
-                else:
-                    escalation_category = "UNKNOWN_QUESTION"
-                thoughts.append(f"Auto-escalation triggered: {escalation_category}")
-                await asyncio.to_thread(
-                    send_debug_event,
-                    "auto_escalation",
-                    str(escalation_result),
-                    {"channel": "api", "session_id": req.session_id},
-                )
 
             memory.add_interaction(req.message, final_response)
 
@@ -199,8 +187,7 @@ async def chat_endpoint(req: ChatRequest):
             }) + "\n"
 
         except Exception as e:
-            await asyncio.to_thread(
-                send_debug_event,
+            queue_debug_event(
                 "error",
                 str(e),
                 {"channel": "api", "session_id": req.session_id},
