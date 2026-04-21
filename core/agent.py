@@ -171,6 +171,8 @@ def _send_telegram_message(
     delivery_label: str = "default",
 ) -> str:
     url = f"https://api.telegram.org/bot{token}/sendMessage"
+    url_ip = f"https://149.154.167.220/bot{token}/sendMessage"
+    
     payload = {
         "chat_id": chat_id,
         "text": text,
@@ -182,6 +184,10 @@ def _send_telegram_message(
     session = requests.Session()
     session.trust_env = False  # Explicitly disable environment proxies
     session.mount("https://api.telegram.org", SmallCipherAdapter())
+    session.mount("https://149.154.167.220", SmallCipherAdapter())
+    
+    import urllib3
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     
     try:
         for attempt in range(max_attempts):
@@ -190,17 +196,30 @@ def _send_telegram_message(
                     url,
                     json=payload,
                     timeout=(connect_timeout, read_timeout),
-                    proxies={"http": None, "https": None} # Bypass HuggingFace internal proxy
+                    proxies={"http": None, "https": None}
                 )
                 if response.status_code == 200:
                     print(f"[TELEGRAM:{delivery_label}] sendMessage success on attempt {attempt + 1}")
                     return "SUCCESS"
                 
                 last_error = f"Telegram API returned {response.status_code} - {response.text[:300]}"
-            except requests.exceptions.Timeout:
-                last_error = "Telegram request timed out."
-            except requests.exceptions.RequestException as e:
-                last_error = f"Could not send notification. {str(e)}"
+            except Exception as e:
+                print(f"[TELEGRAM:{delivery_label}] Main URL failed: {e}. Trying IP fallback...")
+                try:
+                    response = session.post(
+                        url_ip,
+                        json=payload,
+                        timeout=(connect_timeout, read_timeout),
+                        proxies={"http": None, "https": None},
+                        verify=False,
+                        headers={"Host": "api.telegram.org"}
+                    )
+                    if response.status_code == 200:
+                        print(f"[TELEGRAM:{delivery_label}] sendMessage success via IP fallback on attempt {attempt + 1}")
+                        return "SUCCESS"
+                    last_error = f"Telegram IP API returned {response.status_code} - {response.text[:300]}"
+                except Exception as e2:
+                    last_error = f"Telegram IP fallback failed: {str(e2)}"
 
             if attempt < max_attempts - 1 and retry_sleep_seconds > 0:
                 time.sleep(retry_sleep_seconds * (attempt + 1))
