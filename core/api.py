@@ -9,7 +9,7 @@ from typing import Dict
 from dotenv import load_dotenv
 
 # Import the core engine components
-from core.agent import init_agent, RollingMemory, queue_debug_event, queue_maybe_notify_arun, run_pre_escalation
+from core.agent import init_agent, RollingMemory, queue_debug_event, queue_maybe_notify_arun, run_pre_escalation, queue_chat_history_to_telegram
 from langchain_openai import ChatOpenAI
 
 load_dotenv()
@@ -187,6 +187,7 @@ async def chat_endpoint(req: ChatRequest):
             )
 
             memory.add_interaction(req.message, final_response)
+            queue_chat_history_to_telegram(req.session_id, req.message, final_response)
 
             yield json.dumps({
                 "type": "final",
